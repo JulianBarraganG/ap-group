@@ -6,6 +6,7 @@ where
 
 data Exp = 
   CnstInt Integer
+  | CnstBool Bool
   | Add Exp Exp
   | Sub Exp Exp
   | Mul Exp Exp

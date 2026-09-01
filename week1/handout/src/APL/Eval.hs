@@ -11,7 +11,9 @@ import APL.AST (Exp(..))
 
 
 -- Value
-data Val = ValInt Integer
+data Val = 
+  ValInt Integer
+  | ValBool Bool
   deriving (Eq, Show)
 
 -- Error Messages
@@ -20,30 +22,40 @@ divByZeroErr :: Error
 divByZeroErr = "Division by zero error"
 negExpErr :: Error
 negExpErr = "Negative exponent error"
+arithBoolErr :: Error
+arithBoolErr = "Arithmetics only defined for Integers"
 
 
 -- Eval function to evaluate expressions into values
 eval :: Exp -> Either Error Val
--- Constructor
+-- CONSTRUCTORS
 eval (CnstInt x) = Right $ ValInt x
+eval (CnstBool x) = Right $ ValBool x
+-- ARITHMETICS
 -- Addition
 eval (Add e1 e2) = 
-  case(eval e1, eval e2) of
+  case (eval e1, eval e2) of
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x+y
+    (Right (ValBool _), Right _) -> Left $ arithBoolErr
+    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
 -- Subtraction
 eval (Sub e1 e2) = 
   case(eval e1, eval e2) of 
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x-y
+    (Right (ValBool _), Right _) -> Left $ arithBoolErr
+    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
 -- Multiplication
 eval (Mul e1 e2) =
   case(eval e1, eval e2) of
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x*y
+    (Right (ValBool _), Right _) -> Left $ arithBoolErr
+    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
 -- Division (integer)
 eval (Div e1 e2) = 
   case(eval e1, eval e2) of 
@@ -51,6 +63,8 @@ eval (Div e1 e2) =
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right(ValInt x), Right(ValInt y)) -> Right $ ValInt $ x `div` y
+    (Right (ValBool _), Right _) -> Left $ arithBoolErr
+    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
 -- Power (integer)
 eval (Pow e1 e2) =
   case(eval e1, eval e2) of
@@ -59,3 +73,5 @@ eval (Pow e1 e2) =
     (Right(ValInt x), Right(ValInt y))
       | y < 0 -> Left $ negExpErr
       | otherwise -> Right $ ValInt $ x^y
+    (Right (ValBool _), Right _) -> Left $ arithBoolErr
+    (Right _, Right (ValBool _)) -> Left $ arithBoolErr

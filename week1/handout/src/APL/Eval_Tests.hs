@@ -28,9 +28,12 @@ evalDivByZeroTest :: TestTree
 evalDivByZeroTest = testCase "Testing eval raises div-by-zero error" $ eval (Div (CnstInt 1) (CnstInt 0)) @?= Left divByZeroErr
 -- Test Pow
 evalPowTest :: TestTree
-evalPowTest = testCase "Testing eval correctly applies power 2^3=8" $ eval (Pow (CnstInt 2) (CnstInt 3)) @?= Right (ValInt 8)
+evalPowTest = testCase "Testing eval correctly applies power 2^3=8" $ eval(Pow (CnstInt 2) (CnstInt 3)) @?= Right (ValInt 8)
 evalNegExpPowTest :: TestTree
 evalNegExpPowTest = testCase "Testing eval raises neg-exp error" $ eval (Pow (CnstInt 1) (CnstInt (-1))) @?= Left negExpErr
+-- Test Eval Bool
+evalBoolTest :: TestTree
+evalBoolTest = testCase "Testing boolean constructor returns bool" $ eval (CnstBool True) @?= Right (ValBool True)
 
 tests :: TestTree
 tests =
@@ -46,5 +49,6 @@ tests =
       evalDivTest,
       evalDivByZeroTest,
       evalPowTest,
-      evalNegExpPowTest
+      evalNegExpPowTest,
+      evalBoolTest
     ]

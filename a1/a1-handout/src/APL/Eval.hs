@@ -120,6 +120,7 @@ eval env (If e1 e2 e3) =
     Right (ValBool b)
       | b -> eval env e2
       | otherwise -> eval env e3
+-- ENV OPERATIONS
 eval env (Var vname) =
   case (envLookup vname env) of
     Nothing -> Left $ lookupErr ++ vname
@@ -129,4 +130,12 @@ eval env (Let vname e1 e2) =
     Left err -> Left err
     Right val -> eval (envExtend vname val env) e2
 -- FOR LOOPS 
-eval env (ForLoop (p, initial) (i, bound) body) = undefined
+eval env (ForLoop (p, initial) (i, bound) body) =
+  case (eval env initial, eval env bound, eval env body, eval env (Var i), eval env (Var p)) of
+    (_, _, _, Left _, _) -> eval (envExtend i (ValInt 0) env) (ForLoop (p, initial) (i, bound) body)
+    (Right v, _, _, _, Left _) -> eval (envExtend p v env) (ForLoop (p, initial) (i, bound) body)
+    (Right (ValInt v), Right (ValInt n), Right (ValInt b), Right (ValInt count), Right (ValInt tally)) 
+      |count < b -> undefined 
+      | otherwise -> undefined 
+    (_, _, _, _, _) -> undefined
+

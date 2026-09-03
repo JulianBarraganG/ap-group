@@ -24,6 +24,10 @@ negExpErr :: Error
 negExpErr = "Negative exponent error"
 arithBoolErr :: Error
 arithBoolErr = "Arithmetics only defined for Integers"
+eqlErr :: Error
+eqlErr = "Eql must compare same type class e.g. ValBool"
+ifErr :: Error
+ifErr = "Condition must be type ValBool, not ValInt"
 
 
 -- Eval function to evaluate expressions into values
@@ -38,24 +42,21 @@ eval (Add e1 e2) =
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x+y
-    (Right (ValBool _), Right _) -> Left $ arithBoolErr
-    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
+    (Right _, Right _) -> Left arithBoolErr
 -- Subtraction
 eval (Sub e1 e2) = 
   case(eval e1, eval e2) of 
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x-y
-    (Right (ValBool _), Right _) -> Left $ arithBoolErr
-    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
+    (Right _, Right _) -> Left arithBoolErr
 -- Multiplication
 eval (Mul e1 e2) =
   case(eval e1, eval e2) of
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x*y
-    (Right (ValBool _), Right _) -> Left $ arithBoolErr
-    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
+    (Right _, Right _) -> Left arithBoolErr
 -- Division (integer)
 eval (Div e1 e2) = 
   case(eval e1, eval e2) of 
@@ -63,8 +64,7 @@ eval (Div e1 e2) =
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right(ValInt x), Right(ValInt y)) -> Right $ ValInt $ x `div` y
-    (Right (ValBool _), Right _) -> Left $ arithBoolErr
-    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
+    (Right _, Right _) -> Left arithBoolErr
 -- Power (integer)
 eval (Pow e1 e2) =
   case(eval e1, eval e2) of
@@ -73,5 +73,21 @@ eval (Pow e1 e2) =
     (Right(ValInt x), Right(ValInt y))
       | y < 0 -> Left $ negExpErr
       | otherwise -> Right $ ValInt $ x^y
-    (Right (ValBool _), Right _) -> Left $ arithBoolErr
-    (Right _, Right (ValBool _)) -> Left $ arithBoolErr
+    (Right _, Right _) -> Left arithBoolErr
+-- CONDITIONS
+-- Equality for Expressions
+eval (Eql e1 e2) =
+  case (eval e1, eval e2) of
+    (Left err, _) -> Left err
+    (_, Left err) -> Left err
+    (Right (ValInt _), Right (ValBool _)) -> Left $ eqlErr
+    (Right (ValBool _), Right (ValInt _)) -> Left $ eqlErr
+    (Right x, Right y) -> Right $ ValBool $ x == y
+-- If
+eval (If e1 e2 e3) =
+  case eval e1 of
+    Left err -> Left err
+    Right (ValInt _) -> Left ifErr
+    Right (ValBool b)
+      | b -> eval e2
+      | otherwise -> eval e3

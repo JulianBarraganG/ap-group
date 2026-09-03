@@ -34,6 +34,21 @@ evalNegExpPowTest = testCase "Testing eval raises neg-exp error" $ eval (Pow (Cn
 -- Test Eval Bool
 evalBoolTest :: TestTree
 evalBoolTest = testCase "Testing boolean constructor returns bool" $ eval (CnstBool True) @?= Right (ValBool True)
+-- Test Eql (Exp)
+evalEqlBoolTest1 :: TestTree
+evalEqlBoolTest1 = testCase "Testing ValBool equality condition True == True" $ eval (Eql (CnstBool True) (CnstBool True)) @?= Right (ValBool True)
+evalEqlBoolTest2 :: TestTree
+evalEqlBoolTest2 = testCase "Testing ValBool equality condition True == False" $ eval (Eql (CnstBool True) (CnstBool False)) @?= Right (ValBool False)
+evalEqlBoolTest3 :: TestTree
+evalEqlBoolTest3 = testCase "Testing ValBool equality condition False == False" $ eval (Eql (CnstBool False) (CnstBool False)) @?= Right (ValBool True)
+evalEqlIntTest1 :: TestTree
+evalEqlIntTest1 = testCase "Testing ValInt equality condition x == x" $ eval (Eql (CnstInt 1) (CnstInt 1)) @?= Right (ValBool True)
+evalEqlIntTest2 :: TestTree
+evalEqlIntTest2 = testCase "Testing ValInt equality condition x /= y" $ eval (Eql (CnstInt 1) (CnstInt 2)) @?= Right (ValBool False)
+evalEqlErrTest :: TestTree
+evalEqlErrTest = testCase "" $ eval (Eql (Cnstint 1) (CnstBool True) @?= Left ""
+-- Test If (Exp)
+evalIfTest
 
 tests :: TestTree
 tests =
@@ -50,5 +65,10 @@ tests =
       evalDivByZeroTest,
       evalPowTest,
       evalNegExpPowTest,
-      evalBoolTest
+      evalBoolTest,
+      evalEqlBoolTest1,
+      evalEqlBoolTest2,
+      evalEqlBoolTest3,
+      evalEqlIntTest1,
+      evalEqlIntTest2
     ]

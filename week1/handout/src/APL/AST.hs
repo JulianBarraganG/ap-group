@@ -12,4 +12,6 @@ data Exp =
   | Mul Exp Exp
   | Div Exp Exp
   | Pow Exp Exp
+  | Eql Exp Exp
+  | If Exp Exp Exp
   deriving (Eq, Show)

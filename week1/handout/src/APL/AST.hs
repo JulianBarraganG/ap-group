@@ -8,8 +8,8 @@ where
 type VName = String
 
 data Exp = 
-  CnstInt Integer
-  | CnstBool Bool
+  CstInt Integer
+  | CstBool Bool
   | Add Exp Exp
   | Sub Exp Exp
   | Mul Exp Exp

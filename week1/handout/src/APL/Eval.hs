@@ -4,15 +4,12 @@ module APL.Eval
   -- Functions
   eval,
   envEmpty,
-  envLookup,
-  envExtend,
   -- Errors
-  arithBoolErr,
+  lookupErr,
   divByZeroErr,
   negExpErr,
   eqlErr,
   ifErr,
-  lookupErr,
   )
 where
 
@@ -65,8 +62,8 @@ envLookup vname env =
 -- Eval function to evaluate expressions into values
 eval :: Env -> Exp -> Either Error Val
 -- CONSTRUCTORS
-eval _ (CnstInt x) = Right $ ValInt x
-eval _ (CnstBool x) = Right $ ValBool x
+eval _ (CstInt x) = Right $ ValInt x
+eval _ (CstBool x) = Right $ ValBool x
 --ARITHMETICS
 -- Addition
 eval env (Add e1 e2) = 

@@ -128,3 +128,5 @@ eval env (Let vname e1 e2) =
   case (eval env e1) of
     Left err -> Left err
     Right val -> eval (envExtend vname val env) e2
+-- FOR LOOPS 
+eval env (ForLoop (p, initial) (i, bound) body) = undefined

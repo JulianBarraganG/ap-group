@@ -19,4 +19,6 @@ data Exp =
   | If Exp Exp Exp
   | Var VName
   | Let VName Exp Exp
+  | ForLoop (VName, Exp) (VName, Exp) Exp
+  -- ForLoop (p, initial) (i, bound) body
   deriving (Eq, Show)

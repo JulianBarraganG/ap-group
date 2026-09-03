@@ -89,6 +89,15 @@ evalEnvTests =
         )
         @?= Right (ValBool True)
   ]
+evalForLoopTests :: TestTree
+evalForLoopTests = 
+  testGroup
+  "Testing For loop implementation"
+  [
+    -- Test handout example 
+    testCase "Example from handout" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i"))) @?= Right (ValInt 45)
+  ]
+
 
 tests :: TestTree
 tests =
@@ -98,5 +107,6 @@ tests =
       expConstructorTests,
       evalConditionalsTests,
       evalArithmeticTests,
-      evalEnvTests
+      evalEnvTests,
+      evalForLoopTests
     ]

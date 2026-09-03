@@ -122,8 +122,8 @@ eval env (If e1 e2 e3) =
       | otherwise -> eval env e3
 eval env (Var vname) =
   case (envLookup vname env) of
-    Nothing -> Left (lookupErr ++ vname)
-    (Just x) -> Right x
+    Nothing -> Left $ lookupErr ++ vname
+    Just x -> Right x
 eval env (Let vname e1 e2) =
   case (eval env e1) of
     Left err -> Left err

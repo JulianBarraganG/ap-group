@@ -1,9 +1,12 @@
 module APL.Eval
   (
   Val(..),
+  arithBoolErr,
   eval,
   divByZeroErr,
   negExpErr,
+  eqlErr,
+  ifErr,
   )
 where
 

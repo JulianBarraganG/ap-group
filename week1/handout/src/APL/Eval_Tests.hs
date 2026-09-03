@@ -1,7 +1,15 @@
 module APL.Eval_Tests (tests) where
 
 import APL.AST (Exp(..))
-import APL.Eval (Val(..), eval, divByZeroErr, negExpErr)
+import APL.Eval (
+  Val(..),
+  eval,
+  divByZeroErr,
+  negExpErr,
+  arithBoolErr,
+  eqlErr,
+  ifErr,
+  )
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
@@ -46,9 +54,12 @@ evalEqlIntTest1 = testCase "Testing ValInt equality condition x == x" $ eval (Eq
 evalEqlIntTest2 :: TestTree
 evalEqlIntTest2 = testCase "Testing ValInt equality condition x /= y" $ eval (Eql (CnstInt 1) (CnstInt 2)) @?= Right (ValBool False)
 evalEqlErrTest :: TestTree
-evalEqlErrTest = testCase "" $ eval (Eql (Cnstint 1) (CnstBool True) @?= Left ""
+evalEqlErrTest = testCase "Testing equality type mismatch error" $ eval (Eql (CnstInt 1) (CnstBool True)) @?= Left eqlErr
 -- Test If (Exp)
-evalIfTest
+evalIfIntErrTest :: TestTree
+evalIfIntErrTest = testCase "Testing conditional If ValInt error" $ eval (If (CnstInt 1) (CnstInt 1) (CnstInt 1)) @?= Left ifErr
+evalIfErrErrTest :: TestTree
+evalIfErrErrTest = testCase "Testing conditional If `error` error" $ eval (If ()
 
 tests :: TestTree
 tests =
@@ -70,5 +81,7 @@ tests =
       evalEqlBoolTest2,
       evalEqlBoolTest3,
       evalEqlIntTest1,
-      evalEqlIntTest2
+      evalEqlIntTest2,
+      evalEqlErrTest,
+      evalIfIntErrTest
     ]

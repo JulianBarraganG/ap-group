@@ -77,7 +77,17 @@ evalEnvTests =
     -- Test eval env Let
     testCase "Let 'x'=3 evaluate x+x=6" $ eval envEmpty (Let ("x") (CstInt 3) (Add (Var "x") (Var "x"))) @?= Right (ValInt 6),
     testCase "Let 'x'=3 evaluate x+y=5 for y=2" $ eval [("y", ValInt 2)] (Let ("x") (CstInt 3) (Add (Var "x") (Var "y"))) @?= Right (ValInt 5),
-    testCase "Error when first expression errors" $ eval envEmpty (Let ("x") (Pow (CstInt 1) (CstInt (-1))) (Add (Var "x") (Var "y"))) @?= Left negExpErr 
+    testCase "Error when first expression errors" $
+      eval envEmpty (Let ("x") (Pow (CstInt 1) (CstInt (-1))) (Add (Var "x") (Var "y"))) @?= Left negExpErr ,
+    testCase "Let (shadowing)" $
+      eval
+        envEmpty
+        ( Let
+            "x"
+            (Add (CstInt 2) (CstInt 3))
+            (Let "x" (CstBool True) (Var "x"))
+        )
+        @?= Right (ValBool True)
   ]
 
 tests :: TestTree

@@ -11,8 +11,8 @@ import APL.Eval (
   negExpErr,
   ifErr,
   eqlErr,
+  nonIntegErr,
   lookupErr,
-  envEmpty,
   )
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
@@ -95,7 +95,9 @@ evalForLoopTests =
   "Testing For loop implementation"
   [
     -- Test handout example 
-    testCase "Example from handout" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i"))) @?= Right (ValInt 45)
+    testCase "Example from handout" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i"))) @?= Right (ValInt 45),
+    testCase "Bound must be integer" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstBool True) (Add (Var "p") (Var "i"))) @?= Left nonIntegErr
+
   ]
 
 

@@ -10,6 +10,7 @@ module APL.Eval
   negExpErr,
   eqlErr,
   ifErr,
+  nonIntegErr,
   )
 where
 
@@ -36,8 +37,8 @@ ifErr :: Error
 ifErr = "Condition must be type ValBool, not ValInt"
 lookupErr :: Error
 lookupErr = "Variable name not in environment: "
-posBoundErr :: Error
-posBoundErr = "Bound must be a positive integer, got: "
+nonIntegErr :: Error
+nonIntegErr = "Non-integral loop bound"
 
 -- Environment
 type Env = [(VName, Val)]
@@ -153,13 +154,6 @@ eval env (ForLoop (p, initial) (i, bound) body) =
     -- insert p in env
       eval (envExtend i (ValInt 0) env)
       (ForLoop (p, initial) (i, bound) body)
-    (_, _, _, Left err) -> Left err
-    -- bind n and insert
-     -- put evaluated expression in env
-     -- left case both sides
-     -- while i<n do loop and increment
-
-     -- (_, i)
-     --   | i >= n -> return p
-     --   | otherwise -> -- do loop again and increment i
-    (_, _, _, _) -> Right (ValInt 0)
+    (_, _, Right (ValInt _), Left err) -> Left err
+    (_, _, Right _, _) -> Left nonIntegErr
+    (_, _, Left err, _) -> Left err

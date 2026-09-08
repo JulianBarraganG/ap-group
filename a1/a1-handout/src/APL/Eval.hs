@@ -22,9 +22,6 @@ data Val =
   | ValBool Bool
   deriving (Eq, Show)
 
--- Environment
-type Env = [(VName, Val)]
-
 -- Error Messages
 type Error = String
 divByZeroErr :: Error
@@ -40,6 +37,9 @@ ifErr = "Condition must be type ValBool, not ValInt"
 lookupErr :: Error
 lookupErr = "Variable name not in environment: "
 
+-- Environment
+type Env = [(VName, Val)]
+
 -- | Empty environment, which contains no variable bindings.
 envEmpty :: Env
 envEmpty = []
@@ -47,7 +47,7 @@ envEmpty = []
 -- | Extend an environment with a new variable binding,
 -- producing a new environment.
 envExtend :: VName -> Val -> Env -> Env
-envExtend vname val env = [(vname, val)] ++ env
+envExtend vname val env = (vname, val) : env
 
 -- | Look up a variable by name in the provided environment.
 -- Returns Nothing if the variable is not in the environment.

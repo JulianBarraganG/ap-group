@@ -36,6 +36,8 @@ ifErr :: Error
 ifErr = "Condition must be type ValBool, not ValInt"
 lookupErr :: Error
 lookupErr = "Variable name not in environment: "
+posBoundErr :: Error
+posBoundErr = "Bound must be a positive integer, got: "
 
 -- Environment
 type Env = [(VName, Val)]
@@ -129,4 +131,35 @@ eval env (Let vname e1 e2) =
     Left err -> Left err
     Right val -> eval (envExtend vname val env) e2
 -- FOR LOOPS 
-eval env (ForLoop (p, initial) (i, bound) body) = undefined
+eval env (ForLoop (p, initial) (i, bound) body) =
+  case (eval env (Var p), eval env (Var i), eval env bound, eval env body) of
+     -- first evaluate and confirm valid values (init)
+    (Right p', Right (ValInt i'), Right (ValInt n), Right bodyVal)
+      | i' < n -> eval 
+        (
+          envExtend i (ValInt (i' + 1)) (envExtend p bodyVal env)
+          
+        ) 
+        (
+          ForLoop (p, initial) (i, bound) body
+        )
+      | otherwise -> Right p'
+    (Left _, _, Right (ValInt _), _) -> -- lookup error on (Var p)
+      case (eval env initial) of
+        Left err -> Left err
+        Right v -> eval (envExtend p v env) (ForLoop (p, initial) (i, bound) body)
+        
+    (_, Left _, Right (ValInt _), _) -> -- lookup error on (Var p)
+    -- insert p in env
+      eval (envExtend i (ValInt 0) env)
+      (ForLoop (p, initial) (i, bound) body)
+    (_, _, _, Left err) -> Left err
+    -- bind n and insert
+     -- put evaluated expression in env
+     -- left case both sides
+     -- while i<n do loop and increment
+
+     -- (_, i)
+     --   | i >= n -> return p
+     --   | otherwise -> -- do loop again and increment i
+    (_, _, _, _) -> Right (ValInt 0)

@@ -132,28 +132,21 @@ eval env (Let vname e1 e2) =
     Left err -> Left err
     Right val -> eval (envExtend vname val env) e2
 -- FOR LOOPS 
+-- | for (p = initial) (i < bound) body
+-- Runs `body` `bound` times.  Each iteration sees `p` bound to the result of
+-- the previous iteration (starting from `initial`) and `i` bound to the
+-- current counter.  The value of the last iteration is the value of the loop.
 eval env (ForLoop (p, initial) (i, bound) body) =
-  case (eval env (Var p), eval env (Var i), eval env bound, eval env body) of
-     -- first evaluate and confirm valid values (init)
-    (Right p', Right (ValInt i'), Right (ValInt n), Right bodyVal)
-      | i' < n -> eval 
-        (
-          envExtend i (ValInt (i' + 1)) (envExtend p bodyVal env)
-          
-        ) 
-        (
-          ForLoop (p, initial) (i, bound) body
-        )
-      | otherwise -> Right p'
-    (Left _, _, Right (ValInt _), _) -> -- lookup error on (Var p)
-      case (eval env initial) of
-        Left err -> Left err
-        Right v -> eval (envExtend p v env) (ForLoop (p, initial) (i, bound) body)
-        
-    (_, Left _, Right (ValInt _), _) -> -- lookup error on (Var p)
-    -- insert p in env
-      eval (envExtend i (ValInt 0) env)
-      (ForLoop (p, initial) (i, bound) body)
-    (_, _, Right (ValInt _), Left err) -> Left err
-    (_, _, Right _, _) -> Left nonIntegErr
-    (_, _, Left err, _) -> Left err
+  case (eval env bound, eval env initial) of
+    (Left err, _) -> Left err
+    (Right (ValBool _), _) -> Left nonIntegErr
+    (_, Left err) -> Left err
+    (Right (ValInt n), Right initVal) -> loop 0 initVal
+      where
+        -- counter: iterations done so far; acc: current value of p
+        loop counter acc
+          | counter >= n = Right acc
+          | otherwise =
+              case eval (envExtend i (ValInt counter) (envExtend p acc env)) body of
+                Left err -> Left err
+                Right acc' -> loop (counter + 1) acc'

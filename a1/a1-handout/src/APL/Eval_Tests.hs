@@ -63,7 +63,9 @@ evalConditionalsTests =
     testCase "Testing conditional If ValInt error" $ eval envEmpty (If (CstInt 1) (CstInt 1) (CstInt 1)) @?= Left ifErr,
     testCase "Testing conditional If `error` error" $ eval envEmpty (If (Div (CstInt 1) (CstInt 0)) (CstInt 1) (CstInt 1)) @?= Left divByZeroErr,
     testCase "Testing conditional If `True`" $ eval envEmpty (If (CstBool True) (CstInt 3) (CstInt 1)) @?= Right (ValInt 3),
-    testCase "Testing conditional If `False`" $ eval envEmpty (If (CstBool False) (CstInt 3) (CstInt 1)) @?= Right (ValInt 1)
+    testCase "Testing conditional If `False`" $ eval envEmpty (If (CstBool False) (CstInt 3) (CstInt 1)) @?= Right (ValInt 1),
+    testCase "Testing conditional If ValFun error" $ 
+      eval envEmpty (If (Lambda "" (CstBool True)) (CstInt 1) (CstInt 2)) @?= Left ifErr
   ]
 evalEnvTests :: TestTree
 evalEnvTests =
@@ -108,7 +110,9 @@ evalFunTests =
     -- Test handout example
     testCase "Example from handout without apply" $ eval envEmpty (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) @?= 
         Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
-    testCase "Example from handout with apply" $ eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3)) @?= Right (ValInt 5)
+    testCase "Example from handout with apply" $ eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3)) @?= Right (ValInt 5),
+    testCase "Test correct read of input env in nested ValFunc" $
+      eval [("x", ValInt 2)] (Apply (Lambda "y" (Add (Var "x") (Var "y"))) (CstInt 3)) @?= Right (ValInt 5)
   ]
 
 evalTryCatchTests :: TestTree
@@ -118,9 +122,9 @@ evalTryCatchTests =
   [
     -- Test try-cath in APL
     testCase "Correctly evaluate succesful expression" $
-      eval envEmpty TryCatch (Add (CstInt 1) (CstInt 2)) (CstBool False) @?= Right (ValInt 3),
+      eval envEmpty (TryCatch (Add (CstInt 1) (CstInt 2)) (CstBool False)) @?= Right (ValInt 3),
     testCase "Correctly return snd expression when fst is an error" $
-      eval envEmpty TryCatch (Div (CstInt 2) (CstInt 0)) (CstBool False) @?= Right (ValBool False)
+      eval envEmpty (TryCatch (Div (CstInt 2) (CstInt 0)) (CstBool False)) @?= Right (ValBool False)
   ]
 
 

@@ -123,6 +123,7 @@ eval env (If e1 e2 e3) =
   case eval env e1 of
     Left err -> Left err
     Right (ValInt _) -> Left ifErr
+    Right (ValFun _ _ _) -> Left ifErr
     Right (ValBool b)
       | b -> eval env e2
       | otherwise -> eval env e3

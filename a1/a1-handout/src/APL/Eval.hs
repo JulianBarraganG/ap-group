@@ -161,4 +161,6 @@ eval env (Apply e1 e2) =
   case(eval env e1, eval env e2) of 
     (Right (ValFun env' vname body), Right argVal) -> eval (envExtend vname argVal env') body
     (Right (ValBool _), _) -> Left notValFunErr 
-    (_, _) -> undefined
+    (Right (ValInt _), _) -> Left notValFunErr
+    (Left err, _) -> Left err
+    (_, Left err) -> Left err

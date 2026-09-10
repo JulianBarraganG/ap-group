@@ -136,10 +136,6 @@ eval env (Let vname e1 e2) =
     Left err -> Left err
     Right val -> eval (envExtend vname val env) e2
 -- FOR LOOPS 
--- | for (p = initial) (i < bound) body
--- Runs `body` `bound` times.  Each iteration sees `p` bound to the result of
--- the previous iteration (starting from `initial`) and `i` bound to the
--- current counter.  The value of the last iteration is the value of the loop.
 eval env (ForLoop (p, initial) (i, bound) body) =
   case (eval env bound, eval env initial) of
     (Left err, _) -> Left err
@@ -155,8 +151,8 @@ eval env (ForLoop (p, initial) (i, bound) body) =
               case eval (envExtend i (ValInt counter) (envExtend p acc env)) body of
                 Left err -> Left err
                 Right acc' -> loop (counter + 1) acc'
+-- FUNCTION EVALUATION
 eval env (Lambda vname e1) = Right $ ValFun env vname e1
-
 eval env (Apply e1 e2) =
   case(eval env e1, eval env e2) of 
     (Right (ValFun env' vname body), Right argVal) -> eval (envExtend vname argVal env') body

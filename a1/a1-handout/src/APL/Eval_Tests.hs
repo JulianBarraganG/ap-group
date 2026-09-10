@@ -109,7 +109,18 @@ evalFunTests =
     testCase "Example from handout without apply" $ eval envEmpty (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) @?= 
         Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
     testCase "Example from handout with apply" $ eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3)) @?= Right (ValInt 5)
+  ]
 
+evalTryCatchTests :: TestTree
+evalTryCatchTests =
+  testGroup
+  "Testing APL functions"
+  [
+    -- Test try-cath in APL
+    testCase "Correctly evaluate succesful expression" $
+      eval envEmpty TryCatch (Add (CstInt 1) (CstInt 2)) (CstBool False) @?= Right (ValInt 3),
+    testCase "Correctly return snd expression when fst is an error" $
+      eval envEmpty TryCatch (Div (CstInt 2) (CstInt 0)) (CstBool False) @?= Right (ValBool False)
   ]
 
 
@@ -123,5 +134,6 @@ tests =
       evalArithmeticTests,
       evalEnvTests,
       evalForLoopTests,
-      evalFunTests
+      evalFunTests,
+      evalTryCatchTests
     ]

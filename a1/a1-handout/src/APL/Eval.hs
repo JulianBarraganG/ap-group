@@ -173,4 +173,3 @@ eval env (TryCatch e1 e2) =
   case (eval env e1) of
     (Right val) -> Right val
     (Left _) -> eval env e2
-    

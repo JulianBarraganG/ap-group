@@ -10,6 +10,7 @@ module APL.Eval
   negExpErr,
   eqlErr,
   ifErr,
+  nonIntegErr,
   )
 where
 
@@ -20,6 +21,7 @@ import APL.AST (Exp(..), VName)
 data Val = 
   ValInt Integer
   | ValBool Bool
+  | ValFun Env VName Exp
   deriving (Eq, Show)
 
 -- Error Messages
@@ -36,6 +38,10 @@ ifErr :: Error
 ifErr = "Condition must be type ValBool, not ValInt"
 lookupErr :: Error
 lookupErr = "Variable name not in environment: "
+nonIntegErr :: Error
+nonIntegErr = "Non-integral loop bound"
+notValFunErr :: Error
+notValFunErr = "First expression must evaluate to a ValFun"
 
 -- Environment
 type Env = [(VName, Val)]
@@ -130,12 +136,29 @@ eval env (Let vname e1 e2) =
     Left err -> Left err
     Right val -> eval (envExtend vname val env) e2
 -- FOR LOOPS 
+-- | for (p = initial) (i < bound) body
+-- Runs `body` `bound` times.  Each iteration sees `p` bound to the result of
+-- the previous iteration (starting from `initial`) and `i` bound to the
+-- current counter.  The value of the last iteration is the value of the loop.
 eval env (ForLoop (p, initial) (i, bound) body) =
-  case (eval env initial, eval env bound, eval env body, eval env (Var i), eval env (Var p)) of
-    (_, _, _, Left _, _) -> eval (envExtend i (ValInt 0) env) (ForLoop (p, initial) (i, bound) body)
-    (Right v, _, _, _, Left _) -> eval (envExtend p v env) (ForLoop (p, initial) (i, bound) body)
-    (Right (ValInt v), Right (ValInt n), Right (ValInt b), Right (ValInt count), Right (ValInt tally)) 
-      |count < b -> undefined 
-      | otherwise -> undefined 
-    (_, _, _, _, _) -> undefined
+  case (eval env bound, eval env initial) of
+    (Left err, _) -> Left err
+    (Right (ValBool _), _) -> Left nonIntegErr
+    (Right (ValFun _ _ _), _) -> Left nonIntegErr
+    (_, Left err) -> Left err
+    (Right (ValInt n), Right initVal) -> loop 0 initVal
+      where
+        -- counter: iterations done so far; acc: current value of p
+        loop counter acc
+          | counter >= n = Right acc
+          | otherwise =
+              case eval (envExtend i (ValInt counter) (envExtend p acc env)) body of
+                Left err -> Left err
+                Right acc' -> loop (counter + 1) acc'
+eval env (Lambda vname e1) = Right $ ValFun env vname e1
 
+eval env (Apply e1 e2) =
+  case(eval env e1, eval env e2) of 
+    (Right (ValFun env' vname body), Right argVal) -> eval (envExtend vname argVal env') body
+    (Right (ValBool _), _) -> Left notValFunErr 
+    (_, _) -> undefined

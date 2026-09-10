@@ -20,5 +20,6 @@ data Exp =
   | Var VName
   | Let VName Exp Exp
   | ForLoop (VName, Exp) (VName, Exp) Exp
-  -- ForLoop (p, initial) (i, bound) body
+  | Lambda VName Exp
+  | Apply Exp Exp
   deriving (Eq, Show)

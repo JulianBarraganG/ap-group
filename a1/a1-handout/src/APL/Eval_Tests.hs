@@ -11,8 +11,8 @@ import APL.Eval (
   negExpErr,
   ifErr,
   eqlErr,
+  nonIntegErr,
   lookupErr,
-  envEmpty,
   )
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
@@ -95,7 +95,21 @@ evalForLoopTests =
   "Testing For loop implementation"
   [
     -- Test handout example 
-    testCase "Example from handout" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i"))) @?= Right (ValInt 45)
+    testCase "Example from handout" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i"))) @?= Right (ValInt 45),
+    testCase "Bound must be integer" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstBool True) (Add (Var "p") (Var "i"))) @?= Left nonIntegErr
+
+  ]
+
+evalFunTests :: TestTree
+evalFunTests = 
+  testGroup
+  "Testing APL functions"
+  [
+    -- Test handout example
+    testCase "Example from handout without apply" $ eval envEmpty (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) @?= 
+        Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
+    testCase "Example from handout with apply" $ eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3)) @?= Right (ValInt 5)
+
   ]
 
 
@@ -108,5 +122,6 @@ tests =
       evalConditionalsTests,
       evalArithmeticTests,
       evalEnvTests,
-      evalForLoopTests
+      evalForLoopTests,
+      evalFunTests
     ]

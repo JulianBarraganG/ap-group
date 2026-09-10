@@ -22,4 +22,5 @@ data Exp =
   | ForLoop (VName, Exp) (VName, Exp) Exp
   | Lambda VName Exp
   | Apply Exp Exp
+  | TryCatch Exp Exp
   deriving (Eq, Show)

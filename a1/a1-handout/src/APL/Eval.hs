@@ -158,9 +158,15 @@ eval env (ForLoop (p, initial) (i, bound) body) =
 eval env (Lambda vname e1) = Right $ ValFun env vname e1
 
 eval env (Apply e1 e2) =
-  case(eval env e1, eval env e2) of 
+  case (eval env e1, eval env e2) of 
     (Right (ValFun env' vname body), Right argVal) -> eval (envExtend vname argVal env') body
     (Right (ValBool _), _) -> Left notValFunErr 
     (Right (ValInt _), _) -> Left notValFunErr
     (Left err, _) -> Left err
     (_, Left err) -> Left err
+
+eval env (TryCatch e1 e2) = 
+  case (eval env e1) of
+    (Right val) -> Right val
+    (Left _) -> eval env e2
+    

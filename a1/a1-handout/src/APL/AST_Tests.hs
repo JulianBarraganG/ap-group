@@ -38,10 +38,22 @@ prettyPrintExp =
       @?= "(loop acc = 0 for i < 3 do (acc + i))",
     testCase "Try-catch prints '(try exp1 catch exp2)'" $
       printExp (TryCatch (CstBool True) (CstBool False))
-      @?= "(try true catch false)"
+      @?= "(try true catch false)",
     -- Conditionals
+    testCase "If prints '(if x then y else z)'" $
+      printExp (If (CstBool True) (Var "yay") (Var "nay")) @?= "(if true then yay else nay)",
+    testCase "Eql prints '(x == y)'" $
+      printExp (Eql (Var "x") (Var "y")) @?= "(x == y)",
     -- Environment stuff
+    testCase "Var prints the variable name" $ printExp (Var "x") @?= "x",
+    testCase "Let prints '(let x in y)'" $
+      printExp (Let "x" (CstInt 3) (Add (Var "x") (Var "y"))) @?= "(let x = 3 in (x + y))",
     -- Some nested ones
+    testCase "Gaussian formula test" $
+    printExp (
+      Add (Pow (Var "e") (Mul (Var "i") (Var "pi"))) (CstInt 1)
+    )
+    @?= "((e ** (i * pi)) + 1)"
   ]
 
 tests :: TestTree

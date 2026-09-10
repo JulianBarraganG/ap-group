@@ -33,20 +33,23 @@ printExp :: Exp -> String
 printExp (CstBool True) = "true"
 printExp (CstBool False) = "false"
 printExp (CstInt n) = show n
--- ARITHMETICS BABAAAE
+-- Binary Operators
 printExp (Add e1 e2) = wrapPrnths(printExp e1 ++ " + " ++ printExp e2)
 printExp (Sub e1 e2) = wrapPrnths(printExp e1 ++ " - " ++ printExp e2)
 printExp (Mul e1 e2) = wrapPrnths(printExp e1 ++ " * " ++ printExp e2)
 printExp (Div e1 e2) = wrapPrnths(printExp e1 ++ " / " ++ printExp e2)
 printExp (Pow e1 e2) = wrapPrnths(printExp e1 ++ " ** " ++ printExp e2)
+-- Conditionals
 printExp (Eql e1 e2) = wrapPrnths(printExp e1 ++ " == " ++ printExp e2)
 printExp (If e1 e2 e3) = wrapPrnths(
     "if " ++ printExp e1 ++ " then " ++ printExp e2 ++ " else " ++ printExp e3
   )
+-- Environment stuf?
 printExp (Let vname e1 e2) = wrapPrnths(
     "let " ++ vname ++ " = " ++ printExp e1 ++ " in " ++ printExp e2
   )
 printExp (Var vname) = vname
+-- Functions
 printExp (ForLoop (p, initial) (i, bound) body) = wrapPrnths(
     "loop " ++ p ++ " = " ++ printExp initial ++ " for " ++ i ++ " < " ++ printExp bound ++ " do " ++ printExp body
   )
@@ -54,4 +57,5 @@ printExp (Lambda vname e1) = wrapPrnths(
     "\\" ++ vname ++ " -> " ++ printExp e1
   )
 printExp (Apply e1 e2) = wrapPrnths(printExp e1 ++ " " ++ printExp e2)
+-- Try-Catch
 printExp (TryCatch e1 e2) = wrapPrnths("try " ++ printExp e1 ++ " catch " ++ printExp e2)

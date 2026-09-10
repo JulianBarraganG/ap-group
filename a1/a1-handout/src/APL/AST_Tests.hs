@@ -41,6 +41,7 @@ prettyPrintExp =
       @?= "(try true catch false)"
     -- Conditionals
     -- Environment stuff
+    -- Some nested ones
   ]
 
 tests :: TestTree

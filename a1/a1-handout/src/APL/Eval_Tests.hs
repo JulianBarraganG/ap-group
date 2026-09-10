@@ -13,6 +13,8 @@ import APL.Eval (
   eqlErr,
   nonIntegErr,
   lookupErr,
+  notValFunErr,
+  arithNonIntErr
   )
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
@@ -33,17 +35,25 @@ evalArithmeticTests =
     -- Test Add
     testCase "Testing eval correctly adds 2+2=4" $ eval envEmpty (Add (CstInt 2) (CstInt 2)) @?= Right (ValInt 4),
     testCase "Testing eval correctly add (-2)+2=0" $ eval envEmpty (Add (CstInt (-2)) (CstInt 2)) @?= Right (ValInt 0),
+    testCase "Testing add reacts to nonInt" $ eval envEmpty (Add (CstInt 2) (CstBool True)) @?= Left arithNonIntErr,
     -- Test Sub
     testCase "Testing eval correctly subtracts 2-2=0" $ eval envEmpty (Sub (CstInt 2) (CstInt 2)) @?= Right (ValInt 0),
     testCase "Testing eval correctly subtracts 2-4=-2" $ eval envEmpty (Sub (CstInt 2) (CstInt 4)) @?= Right (ValInt (-2)),
+    testCase "Testing sub reacts to nonInt" $ eval envEmpty (Sub (CstInt 2) (CstBool True)) @?= Left arithNonIntErr,
     -- Test Mul
     testCase "Testing eval correctly multiplies 4*4=16" $ eval envEmpty (Mul (CstInt 4) (CstInt 4)) @?= Right (ValInt 16),
+    testCase "Testing eval correctly multiplies 4*0=0" $ eval envEmpty (Mul (CstInt 4) (CstInt 0)) @?= Right (ValInt 0),
+    testCase "Testing mul reacts to nonInt" $ eval envEmpty (Mul (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))) ) @?= Left arithNonIntErr,
     -- Test Div
     testCase "Testing eval correctly divides 12/3=4" $ eval envEmpty (Div (CstInt 12) (CstInt 3)) @?= Right (ValInt 4),
     testCase "Testing eval raises div-by-zero error" $ eval envEmpty (Div (CstInt 1) (CstInt 0)) @?= Left divByZeroErr,
+    testCase "Testing div reacts to nonInt" $ eval envEmpty (Div (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))) ) @?= Left arithNonIntErr,
+    testCase "Testing div floors" $ eval envEmpty (Div (CstInt 5) (CstInt 2)) @?= Right (ValInt 2),
     -- Test Pow
     testCase "Testing eval correctly applies power 2^3=8" $ eval envEmpty (Pow (CstInt 2) (CstInt 3)) @?= Right (ValInt 8),
-    testCase "Testing eval raises neg-exp error" $ eval envEmpty (Pow (CstInt 1) (CstInt (-1))) @?= Left negExpErr
+    testCase "Testing eval correctly applies power 2^0=1" $ eval envEmpty (Pow (CstInt 2) (CstInt 0)) @?= Right (ValInt 1),
+    testCase "Testing eval raises neg-exp error" $ eval envEmpty (Pow (CstInt 1) (CstInt (-1))) @?= Left negExpErr,
+    testCase "Testing pow reacts to nonInt" $ eval envEmpty (Pow (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))) ) @?= Left arithNonIntErr
   ]
 evalConditionalsTests :: TestTree
 evalConditionalsTests =
@@ -58,14 +68,18 @@ evalConditionalsTests =
     testCase "Testing ValBool equality condition False == False" $ eval envEmpty (Eql (CstBool False) (CstBool False)) @?= Right (ValBool True),
     testCase "Testing ValInt equality condition x == x" $ eval envEmpty (Eql (CstInt 1) (CstInt 1)) @?= Right (ValBool True),
     testCase "Testing ValInt equality condition x /= y" $ eval envEmpty (Eql (CstInt 1) (CstInt 2)) @?= Right (ValBool False),
-    testCase "Testing equality type mismatch error" $ eval envEmpty (Eql (CstInt 1) (CstBool True)) @?= Left eqlErr,
+    testCase "Testing ValFun equality condition x == x" $ eval envEmpty (Eql (Lambda "" (CstBool True)) (Lambda "" (CstBool True))) @?= Right (ValBool True),
+    testCase "Testing equality type mismatch error btw int and bool" $ eval envEmpty (Eql (CstInt 1) (CstBool True)) @?= Left eqlErr,
+    testCase "Testing equality type mismatch error btw function and int" $ eval envEmpty (Eql (Lambda "" (CstBool True)) (CstInt 1)) @?= Left eqlErr,
+    testCase "Testing equality type mismatch error btw function and bool" $ eval envEmpty (Eql (Lambda "" (CstBool True)) (CstBool True)) @?= Left eqlErr,
     -- Test If (Exp)
     testCase "Testing conditional If ValInt error" $ eval envEmpty (If (CstInt 1) (CstInt 1) (CstInt 1)) @?= Left ifErr,
     testCase "Testing conditional If `error` error" $ eval envEmpty (If (Div (CstInt 1) (CstInt 0)) (CstInt 1) (CstInt 1)) @?= Left divByZeroErr,
     testCase "Testing conditional If `True`" $ eval envEmpty (If (CstBool True) (CstInt 3) (CstInt 1)) @?= Right (ValInt 3),
     testCase "Testing conditional If `False`" $ eval envEmpty (If (CstBool False) (CstInt 3) (CstInt 1)) @?= Right (ValInt 1),
     testCase "Testing conditional If ValFun error" $ 
-      eval envEmpty (If (Lambda "" (CstBool True)) (CstInt 1) (CstInt 2)) @?= Left ifErr
+      eval envEmpty (If (Lambda "" (CstBool True)) (CstInt 1) (CstInt 2)) @?= Left ifErr,
+    testCase "Testing untaken branch not evaluated" $ eval envEmpty (If (CstBool True) (CstInt 1) (Div (CstInt 1) (CstInt 0))) @?= Right (ValInt 1)
   ]
 evalEnvTests :: TestTree
 evalEnvTests =
@@ -98,8 +112,14 @@ evalForLoopTests =
   [
     -- Test handout example 
     testCase "Example from handout" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i"))) @?= Right (ValInt 45),
-    testCase "Bound must be integer" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstBool True) (Add (Var "p") (Var "i"))) @?= Left nonIntegErr
-
+    testCase "Bound must be integer" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstBool True) (Add (Var "p") (Var "i"))) @?= Left nonIntegErr,
+    testCase "Can operate on bools" $ eval envEmpty (ForLoop ("bool", CstBool False) ("i", CstInt 11) (Eql (CstBool False) (Var "bool"))) @?= Right (ValBool True),
+    testCase "Initial value error casts error" $ eval envEmpty (ForLoop("p", Var "missing") ("i", CstInt 10) (Add (Var "p") (Var "i"))) 
+            @?= Left (lookupErr ++ "missing"),
+    testCase "variable with name p already in env overwritten with initial" $ eval [("p", ValInt 100)] (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i")))
+            @?= Right (ValInt 45),
+    testCase "bound == 0 means returning initial value" $ eval envEmpty (ForLoop ("p", CstInt 100) ("i", CstInt 0) (Add (Var "p") (Var "i"))) @?= Right (ValInt 100), 
+    testCase "body error propagates" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Div (Var "p") (Var "i"))) @?= Left divByZeroErr
   ]
 
 evalFunTests :: TestTree
@@ -112,8 +132,10 @@ evalFunTests =
         Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
     testCase "Example from handout with apply" $ eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3)) @?= Right (ValInt 5),
     testCase "Test correct read of input env in nested ValFunc" $
-      eval [("x", ValInt 2)] (Apply (Lambda "y" (Add (Var "x") (Var "y"))) (CstInt 3)) @?= Right (ValInt 5)
-  ]
+      eval [("x", ValInt 2)] (Apply (Lambda "y" (Add (Var "x") (Var "y"))) (CstInt 3)) @?= Right (ValInt 5),
+    testCase "Test correct Apply error on first expression not evaluating to a ValFun" $ 
+      eval envEmpty (Apply(Add(CstInt 2) (CstInt 3)) (CstInt 4)) @?= Left notValFunErr
+    ]
 
 evalTryCatchTests :: TestTree
 evalTryCatchTests =
@@ -124,9 +146,11 @@ evalTryCatchTests =
     testCase "Correctly evaluate succesful expression" $
       eval envEmpty (TryCatch (Add (CstInt 1) (CstInt 2)) (CstBool False)) @?= Right (ValInt 3),
     testCase "Correctly return snd expression when fst is an error" $
-      eval envEmpty (TryCatch (Div (CstInt 2) (CstInt 0)) (CstBool False)) @?= Right (ValBool False)
+      eval envEmpty (TryCatch (Div (CstInt 2) (CstInt 0)) (CstBool False)) @?= Right (ValBool False),
+    testCase "Return second error when both expressions are errors" $
+      eval envEmpty (TryCatch (Div (CstInt 2) (CstInt 0)) (Var "missing") ) 
+            @?= Left (lookupErr ++ "missing")
   ]
-
 
 tests :: TestTree
 tests =

@@ -11,6 +11,8 @@ module APL.Eval
   eqlErr,
   ifErr,
   nonIntegErr,
+  notValFunErr,
+  arithNonIntErr 
   )
 where
 
@@ -30,8 +32,8 @@ divByZeroErr :: Error
 divByZeroErr = "Division by zero error"
 negExpErr :: Error
 negExpErr = "Negative exponent error"
-arithBoolErr :: Error
-arithBoolErr = "Arithmetics only defined for Integers"
+arithNonIntErr :: Error
+arithNonIntErr = "Arithmetics only defined for Integers"
 eqlErr :: Error
 eqlErr = "Eql must compare same type class e.g. ValBool"
 ifErr :: Error
@@ -77,21 +79,21 @@ eval env (Add e1 e2) =
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x+y
-    (Right _, Right _) -> Left arithBoolErr
+    (Right _, Right _) -> Left arithNonIntErr
 -- Subtraction
 eval env (Sub e1 e2) = 
   case(eval env e1, eval env e2) of 
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x-y
-    (Right _, Right _) -> Left arithBoolErr
+    (Right _, Right _) -> Left arithNonIntErr
 -- Multiplication
 eval env (Mul e1 e2) =
   case(eval env e1, eval env e2) of
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt x), Right (ValInt y)) -> Right $ ValInt $ x*y
-    (Right _, Right _) -> Left arithBoolErr
+    (Right _, Right _) -> Left arithNonIntErr
 -- Division (integer)
 eval env (Div e1 e2) = 
   case(eval env e1, eval env e2) of 
@@ -99,7 +101,7 @@ eval env (Div e1 e2) =
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right(ValInt x), Right(ValInt y)) -> Right $ ValInt $ x `div` y
-    (Right _, Right _) -> Left arithBoolErr
+    (Right _, Right _) -> Left arithNonIntErr
 -- Power (integer)
 eval env (Pow e1 e2) =
   case(eval env e1, eval env e2) of
@@ -108,7 +110,7 @@ eval env (Pow e1 e2) =
     (Right(ValInt x), Right(ValInt y))
       | y < 0 -> Left $ negExpErr
       | otherwise -> Right $ ValInt $ x^y
-    (Right _, Right _) -> Left arithBoolErr
+    (Right _, Right _) -> Left arithNonIntErr
 -- CONDITIONS
 -- Equality for Expressions
 eval env (Eql e1 e2) =
@@ -116,7 +118,12 @@ eval env (Eql e1 e2) =
     (Left err, _) -> Left err
     (_, Left err) -> Left err
     (Right (ValInt _), Right (ValBool _)) -> Left $ eqlErr
+    (Right (ValInt _), Right (ValFun _ _ _)) -> Left $ eqlErr
     (Right (ValBool _), Right (ValInt _)) -> Left $ eqlErr
+    (Right (ValBool _), Right (ValFun _ _ _)) -> Left $ eqlErr
+    (Right (ValFun _ _ _), Right (ValInt _)) -> Left $ eqlErr
+    (Right (ValFun _ _ _), Right (ValBool _)) -> Left $ eqlErr
+
     (Right x, Right y) -> Right $ ValBool $ x == y
 -- If
 eval env (If e1 e2 e3) =

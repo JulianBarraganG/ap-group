@@ -28,7 +28,23 @@ envLookup v env = lookup v env
 
 type Error = String
 
-newtype EvalM a = EvalM a -- TODO
+newtype EvalM a = EvalM (Either Error a)
+
+instance Functor EvalM where
+  fmap _ (EvalM (Left e)) = EvalM $ Left e
+  fmap f (EvalM (Right x)) = EvalM $ Right $ f x
+
+instance Applicative EvalM where
+  pure x =  EvalM $ Right x 
+  _ <*> EvalM (Left e) = EvalM $ Left e
+  EvalM (Left e) <*> _ = EvalM $ Left e 
+  EvalM (Right f) <*> EvalM (Right x) = EvalM $ Right $ f x
+
+instance Monad EvalM where
+  EvalM (Left e) >>= _ = EvalM $ Left e
+  EvalM (Right x) >>= f = EvalM $ Right $ f x
+
+
 
 runEval :: EvalM a -> Either Error a
 runEval = undefined -- TODO

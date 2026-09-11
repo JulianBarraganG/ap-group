@@ -74,6 +74,13 @@ instance Monad EvalM where
 runEval :: EvalM a -> Either Error a
 runEval (EvalM x) = x
 
+catch :: EvalM a -> EvalM a -> EvalM a
+catch (EvalM m1) (EvalM m2) = EvalM $
+  case(m1) of
+    Left _ -> m2
+    Right x -> Right x
+
+
 failure :: String -> EvalM a
 failure s = EvalM $ Left s
 
@@ -178,4 +185,4 @@ eval env (Apply e1 e2) = do
       eval (envExtend v argVal env') body
     _ -> failure notValFunErr
 
-eval _ _ = undefined
+eval env (TryCatch e1 e2) = catch (eval env e1) (eval env e2)

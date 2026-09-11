@@ -42,12 +42,15 @@ instance Applicative EvalM where
 
 instance Monad EvalM where
   EvalM (Left e) >>= _ = EvalM $ Left e
-  EvalM (Right x) >>= f = EvalM $ Right $ f x
+  EvalM (Right x) >>= f = f x
 
 
 
 runEval :: EvalM a -> Either Error a
-runEval = undefined -- TODO
+runEval (EvalM x) = x
+
+failure :: String -> EvalM a
+failure s = EvalM $ Left s
 
 eval :: Env -> Exp -> EvalM Val
 eval = undefined -- TODO

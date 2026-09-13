@@ -114,12 +114,20 @@ evalForLoopTests =
     testCase "Example from handout" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i"))) @?= Right (ValInt 45),
     testCase "Bound must be integer" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstBool True) (Add (Var "p") (Var "i"))) @?= Left nonIntegErr,
     testCase "Can operate on bools" $ eval envEmpty (ForLoop ("bool", CstBool False) ("i", CstInt 11) (Eql (CstBool False) (Var "bool"))) @?= Right (ValBool True),
-    testCase "Initial value error casts error" $ eval envEmpty (ForLoop("p", Var "missing") ("i", CstInt 10) (Add (Var "p") (Var "i"))) 
-            @?= Left (lookupErr ++ "missing"),
-    testCase "variable with name p already in env overwritten with initial" $ eval [("p", ValInt 100)] (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i")))
-            @?= Right (ValInt 45),
-    testCase "bound == 0 means returning initial value" $ eval envEmpty (ForLoop ("p", CstInt 100) ("i", CstInt 0) (Add (Var "p") (Var "i"))) @?= Right (ValInt 100), 
-    testCase "body error propagates" $ eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Div (Var "p") (Var "i"))) @?= Left divByZeroErr
+    testCase "Initial value error casts error" $
+      eval envEmpty (ForLoop("p", Var "missing") ("i", CstInt 10) (Add (Var "p") (Var "i"))) 
+      @?= Left (lookupErr ++ "missing"),
+    testCase "Variable with name 'p' already in env overwritten with initial" $
+      eval [("p", ValInt 100)] (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Add (Var "p") (Var "i")))
+      @?= Right (ValInt 45),
+    testCase "Bound == 0 means returning initial value" $
+      eval envEmpty (ForLoop ("p", CstInt 100) ("i", CstInt 0) (Add (Var "p") (Var "i"))) @?= Right (ValInt 100), 
+    testCase "Body error propagates" $
+      eval envEmpty (ForLoop ("p", CstInt 0) ("i", CstInt 10) (Div (Var "p") (Var "i"))) @?= Left divByZeroErr,
+    testCase "Outer env still reachable inside the loop body" $
+      eval [("outer", ValInt 5)]
+        (ForLoop ("p", CstInt 0) ("i", CstInt 3) (Add (Var "p") (Var "outer")))
+      @?= Right (ValInt 15)
   ]
 
 evalFunTests :: TestTree

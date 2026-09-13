@@ -48,6 +48,7 @@ notValFunErr = "First expression must evaluate to a ValFun"
 -- Environment
 type Env = [(VName, Val)]
 
+
 -- | Empty environment, which contains no variable bindings.
 envEmpty :: Env
 envEmpty = []
@@ -67,12 +68,14 @@ envLookup vname env =
       | x == en -> (Just ev)
       | otherwise -> envLookup x es
 
--- Eval function to evaluate expressions into values
+-------------------------------------
+-- EVALUATE (EXPRESSIONS INTO VALUES)
+-------------------------------------
 eval :: Env -> Exp -> Either Error Val
 -- CONSTRUCTORS
 eval _ (CstInt x) = Right $ ValInt x
 eval _ (CstBool x) = Right $ ValBool x
---ARITHMETICS
+-- ARITHMETICS (BINARY OPERATORS)
 -- Addition
 eval env (Add e1 e2) = 
   case (eval env e1, eval env e2) of
@@ -112,7 +115,6 @@ eval env (Pow e1 e2) =
       | otherwise -> Right $ ValInt $ x^y
     (Right _, Right _) -> Left arithNonIntErr
 -- CONDITIONS
--- Equality for Expressions
 eval env (Eql e1 e2) =
   case (eval env e1, eval env e2) of
     (Left err, _) -> Left err
@@ -123,9 +125,8 @@ eval env (Eql e1 e2) =
     (Right (ValBool _), Right (ValFun _ _ _)) -> Left $ eqlErr
     (Right (ValFun _ _ _), Right (ValInt _)) -> Left $ eqlErr
     (Right (ValFun _ _ _), Right (ValBool _)) -> Left $ eqlErr
-
     (Right x, Right y) -> Right $ ValBool $ x == y
--- If
+
 eval env (If e1 e2 e3) =
   case eval env e1 of
     Left err -> Left err
@@ -134,6 +135,7 @@ eval env (If e1 e2 e3) =
     Right (ValBool b)
       | b -> eval env e2
       | otherwise -> eval env e3
+
 -- ENV OPERATIONS
 eval env (Var vname) =
   case (envLookup vname env) of
@@ -143,13 +145,14 @@ eval env (Let vname e1 e2) =
   case (eval env e1) of
     Left err -> Left err
     Right val -> eval (envExtend vname val env) e2
+
 -- FOR LOOPS 
 eval env (ForLoop (p, initial) (i, bound) body) =
   case (eval env bound, eval env initial) of
     (Left err, _) -> Left err
+    (_, Left err) -> Left err
     (Right (ValBool _), _) -> Left nonIntegErr
     (Right (ValFun _ _ _), _) -> Left nonIntegErr
-    (_, Left err) -> Left err
     (Right (ValInt n), Right initVal) -> loop 0 initVal
       where
         -- counter: iterations done so far; acc: current value of p
@@ -159,6 +162,7 @@ eval env (ForLoop (p, initial) (i, bound) body) =
               case eval (envExtend i (ValInt counter) (envExtend p acc env)) body of
                 Left err -> Left err
                 Right acc' -> loop (counter + 1) acc'
+
 -- FUNCTION EVALUATION
 eval env (Lambda vname e1) = Right $ ValFun env vname e1
 eval env (Apply e1 e2) =

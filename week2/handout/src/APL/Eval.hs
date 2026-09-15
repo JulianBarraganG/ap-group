@@ -124,7 +124,8 @@ eval (If e1 e2 e3) = do
     (ValBool False) -> eval e3
     _ -> failure "If condition must be ValBool"
 -- ENVIRONMENT STUFF
-eval (Var e1) = 
+eval (Var e1) = do
+  env <- askEnv
   case (envLookup e1 env) of
     Just x -> pure x
     Nothing -> failure "Failed to find value for var"

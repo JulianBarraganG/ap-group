@@ -28,61 +28,80 @@ envLookup v env = lookup v env
 
 type Error = String
 
-newtype EvalM a = EvalM (Either Error a) deriving Show
+newtype EvalM a = EvalM (Env -> Either Error a)
 
 instance Functor EvalM where
-  fmap _ (EvalM (Left err)) = EvalM $ Left err
-  fmap f (EvalM (Right a)) = EvalM $ Right (f a)
+  fmap f (EvalM x) = 
+    EvalM $ \env -> case x env of
+      Right x' -> Right $ f x'
+      Left err -> Left err
 
 instance Applicative EvalM where
-  pure a = EvalM $ Right a
-  (EvalM (Right f)) <*> (EvalM (Right a)) = EvalM $ Right (f a)
-  -- _ <*> _ = EvalM $ Left "Applicative Error"
-  (EvalM (Left err1)) <*> (EvalM (Right _)) = EvalM $ Left err1
-  (EvalM (Right _)) <*> (EvalM (Left err2)) = EvalM $ Left err2
-  (EvalM (Left err1)) <*> (EvalM (Left err2)) = EvalM $ Left ( err1 ++ err2)
+  pure a = EvalM $ \_env -> Right a
+  EvalM ef <*> EvalM ex = EvalM $ \env -> 
+    case (ef env, ex env) of
+      (Right f, Right x) -> Right (f x)
+      _ -> Left "Applicative Error"
 
 instance Monad EvalM where
-  EvalM (Left err) >>= _ = EvalM $ Left err
-  EvalM (Right a) >>= f =  f a 
+  EvalM x >>= f = EvalM $ \env ->
+    case x env of
+      Left err -> Left err
+      Right x' -> let EvalM y = f x'
+         in y env
+
 
 runEval :: EvalM a -> Either Error a
-runEval (EvalM a) = a
+runEval (EvalM a) = a envEmpty
 
 failure :: String -> EvalM a
-failure s = EvalM $ Left s
+failure s = EvalM $ \_env -> Left s
 
-eval :: Env -> Exp -> EvalM Val
-eval _ (CstInt x) = pure $ ValInt x -- EvalM $ Right (ValInt x)
-eval _ (CstBool x) = pure $ ValBool x -- EvalM $ Right (ValBool x)
-eval env (Add e1 e2) = do
-  x <- eval env e1
-  y <- eval env e2
+catch :: EvalM a -> EvalM a -> EvalM a
+catch (EvalM m1) (EvalM m2) = EvalM $ \env ->
+  case m1 env of
+    Right x -> Right x
+    Left _ ->  m2 env
+
+
+askEnv :: EvalM Env
+askEnv = EvalM $ \env -> Right env
+
+localEnv :: (Env -> Env) -> EvalM a -> EvalM a
+localEnv envF (EvalM a) = EvalM $ \env -> a (envF env)
+
+
+eval :: Exp -> EvalM Val
+eval (CstInt x) = pure $ ValInt x -- EvalM $ Right (ValInt x)
+eval (CstBool x) = pure $ ValBool x -- EvalM $ Right (ValBool x)
+eval (Add e1 e2) = do
+  x <- eval e1
+  y <- eval e2
   case (x, y) of
     (ValInt n, ValInt m) -> pure $ ValInt $ n + m
     _ -> failure "Non-integer operand"
-eval env (Sub e1 e2) = do
-  x <- eval env e1
-  y <- eval env e2
+eval (Sub e1 e2) = do
+  x <- eval e1
+  y <- eval e2
   case (x, y) of
     (ValInt n, ValInt m) -> pure $ ValInt $ n - m
     _ -> failure "Non-integer operand"
-eval env (Mul e1 e2) = do
-  x <- eval env e1
-  y <- eval env e2
+eval (Mul e1 e2) = do
+  x <- eval e1
+  y <- eval e2
   case (x, y) of
     (ValInt n, ValInt m) -> pure $ ValInt $ n * m
     _ -> failure "Non-integer operand"
-eval env (Div e1 e2) = do
-  x <- eval env e1
-  y <- eval env e2
+eval (Div e1 e2) = do
+  x <- eval e1
+  y <- eval e2
   case (x, y) of
     (ValInt _, ValInt 0) -> failure "Div-by zero error"
     (ValInt n, ValInt m) -> pure $ ValInt $ n `div` m
     _ -> failure "Non-integer operand"
-eval env (Pow e1 e2) = do
-  x <- eval env e1
-  y <- eval env e2
+eval (Pow e1 e2) = do
+  x <- eval e1
+  y <- eval e2
   case y of
     (ValInt m)
       | m < 0 -> failure "Exponent must be positive"
@@ -91,31 +110,31 @@ eval env (Pow e1 e2) = do
         _ -> failure "Non-integer operand"
     _ -> failure "Non-integer operand"
 -- CONDITIONS
-eval env (Eql e1 e2) = do
-  x <- eval env e1
-  y <- eval env e2
+eval (Eql e1 e2) = do
+  x <- eval e1
+  y <- eval e2
   case (x, y) of
     (ValInt n, ValInt m) -> pure $ ValBool $ n == m
     (ValBool n, ValBool m) -> pure $ ValBool $ n == m
     (_, _) -> failure "Equality not defined for given types"
-eval env (If e1 e2 e3) = do
-  x <- eval env e1
+eval (If e1 e2 e3) = do
+  x <- eval e1
   case x of
-    (ValBool True) -> eval env e2
-    (ValBool False) -> eval env e3
+    (ValBool True) -> eval e2
+    (ValBool False) -> eval e3
     _ -> failure "If condition must be ValBool"
 -- ENVIRONMENT STUFF
-eval env (Var e1) = 
+eval (Var e1) = 
   case (envLookup e1 env) of
     Just x -> pure x
     Nothing -> failure "Failed to find value for var"
-eval env (Let vname e1 e2) = do -- let x = e1 in e2
-  x <- eval env e1
+eval (Let vname e1 e2) = do -- let x = e1 in e2
+  x <- eval e1
   eval (envExtend vname x env) e2
 -- FUNCTIONS
-eval env (ForLoop (p, initial) (i, bound) body) = do
-  v <- eval env initial
-  n <- eval env bound
+eval (ForLoop (p, initial) (i, bound) body) = do
+  v <- eval initial
+  n <- eval bound
   case n of
     (ValInt n') -> loop 0 v
       where 
@@ -125,11 +144,13 @@ eval env (ForLoop (p, initial) (i, bound) body) = do
           acc' <- (eval (envExtend p acc (envExtend i (ValInt counter) env)) body)
           loop (counter + 1) acc'
     _ -> failure "Bound must be integer"
-eval env (Lambda vname e1) = pure $ ValFun env vname e1
-eval env (Apply e1 e2) = do
-  vFun <- eval env e1
+eval (Lambda vname e1) = pure $ ValFun env vname e1
+eval (Apply e1 e2) = do
+  vFun <- eval e1
   case vFun of
     (ValFun env' vname' e1') -> do 
       argVal <- eval env' e2
       eval (envExtend vname' argVal env') e1'
     (_) -> failure "Exp 1 must evaluate to ValFun"
+
+eval (TryCatch e1 e2) = catch (eval e1) (eval e2)

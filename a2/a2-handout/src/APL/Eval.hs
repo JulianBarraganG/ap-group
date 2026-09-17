@@ -3,6 +3,8 @@ module APL.Eval
     eval,
     runEval,
     Error,
+    State,
+    stateEmpty,
   )
 where
 
@@ -16,6 +18,25 @@ data Val
   deriving (Eq, Show)
 
 type Env = [(VName, Val)]
+type Error = String
+type State = [String]
+
+newtype EvalM a = EvalM (Env -> State -> (State, Either Error a))
+
+instance Functor EvalM where
+  fmap = liftM
+
+instance Applicative EvalM where
+  pure x = EvalM $ \_env -> \state -> (state, Right x)
+  (<*>) = ap
+
+instance Monad EvalM where
+  EvalM x >>= f = EvalM $ \env -> \state ->
+    case x env state of
+      (state', Left err) -> (state', Left err)
+      (state', Right x') ->
+        let EvalM y = f x'
+         in y env state'
 
 envEmpty :: Env
 envEmpty = []
@@ -26,54 +47,29 @@ envExtend v val env = (v, val) : env
 envLookup :: VName -> Env -> Maybe Val
 envLookup v env = lookup v env
 
-type Error = String
-type State = [String]
-
-newtype EvalM a = EvalM (Env -> State -> (State, Either Error a))
-
-instance Functor EvalM where
-  fmap = liftM
-
-instance Applicative EvalM where
-  pure x = EvalM $ \_env -> Right x
-  (<*>) = ap
-
-instance Monad EvalM where
-  EvalM x >>= f = EvalM $ \env ->
-    case x env of
-      Left err -> Left err
-      Right x' ->
-        let EvalM y = f x'
-         in y env
+stateEmpty :: State
+stateEmpty = []
 
 askEnv :: EvalM Env
-askEnv = EvalM $ \env -> Right env
+askEnv = EvalM $ \env -> \state -> (state, Right env)
 
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
-localEnv f (EvalM m) = EvalM $ \env -> m (f env)
+localEnv f (EvalM m) = EvalM $ \env -> \state -> m (f env) state
 
 failure :: String -> EvalM a
-failure s = EvalM $ \_env -> Left s
+failure s = EvalM $ \_env -> \state -> (state , Left s)
+
+evalPrint :: String -> EvalM ()
+evalPrint s = EvalM $ \_env -> \state -> (state ++ [s], Right ())
 
 catch :: EvalM a -> EvalM a -> EvalM a
-catch (EvalM m1) (EvalM m2) = EvalM $ \env ->
-  case m1 env of
-    Left _ -> m2 env
-    Right x -> Right x
+catch (EvalM m1) (EvalM m2) = EvalM $ \env -> \state ->
+  case m1 env state of
+    (_, Left _) -> m2 env state
+    (state', Right x) -> (state', Right x)
 
-
-runState :: s -> State s a -> (a, s)
-runState s (State f) = f s
-
-get :: State s s
-get = State $ \s -> (s, s)
-
-put :: s -> State s ()
-put s = State $ \_ -> ((), s)
-
-
-runEval :: EvalM a -> ([String], Either Error a)
-runEval (EvalM m) = ([], m envEmpty)
+runEval :: EvalM a -> (State, Either Error a)
+runEval (EvalM m) = m envEmpty stateEmpty
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
@@ -155,4 +151,7 @@ eval (Apply e1 e2) = do
       failure "Cannot apply non-function"
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
-eval (Print s e1) = undefined
+-- eval (Print s e1) = do
+--   val <- eval e1
+--   state <- askEnv
+--   evalPrint (s ++ ": " ++ show val)

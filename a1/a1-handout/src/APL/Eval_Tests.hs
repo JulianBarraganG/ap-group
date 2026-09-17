@@ -136,13 +136,18 @@ evalFunTests =
   "Testing APL functions"
   [
     -- Test handout example
-    testCase "Example from handout without apply" $ eval envEmpty (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) @?= 
-        Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
-    testCase "Example from handout with apply" $ eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3)) @?= Right (ValInt 5),
+    testCase "Example from handout without apply" $
+      eval envEmpty (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y"))))
+      @?= Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
+    testCase "Example from handout with apply" $
+      eval envEmpty (Apply (Let "x" (CstInt 2) (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3))
+      @?= Right (ValInt 5),
     testCase "Test correct read of input env in nested ValFunc" $
-      eval [("x", ValInt 2)] (Apply (Lambda "y" (Add (Var "x") (Var "y"))) (CstInt 3)) @?= Right (ValInt 5),
+      eval [("x", ValInt 2)] (Apply (Lambda "y" (Add (Var "x") (Var "y"))) (CstInt 3))
+      @?= Right (ValInt 5),
     testCase "Test correct Apply error on first expression not evaluating to a ValFun" $ 
-      eval envEmpty (Apply(Add(CstInt 2) (CstInt 3)) (CstInt 4)) @?= Left notValFunErr
+      eval envEmpty (Apply(Add(CstInt 2) (CstInt 3)) (CstInt 4)) 
+      @?= Left notValFunErr
     ]
 
 evalTryCatchTests :: TestTree

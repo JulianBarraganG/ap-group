@@ -150,9 +150,9 @@ eval (Lambda vname e1) = do
 eval (Apply e1 e2) = do
   vFun <- eval e1
   case vFun of
-    (ValFun _ vname body) -> do 
+    (ValFun f_env vname body) -> do 
       argVal <- eval e2
-      localEnv (envExtend vname argVal) (eval body)
+      localEnv (const $ envExtend vname argVal f_env) (eval body)
     (_) -> failure "Exp 1 must evaluate to ValFun"
 
 eval (TryCatch e1 e2) = catch (eval e1) (eval e2)

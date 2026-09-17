@@ -51,7 +51,10 @@ stateEmpty :: State
 stateEmpty = []
 
 askEnv :: EvalM Env
-askEnv = EvalM $ \env -> \state -> (state, Right env)
+askEnv = EvalM $ \env -> \_state -> (_state, Right env)
+
+askState :: EvalM State
+askState = EvalM $ \_env -> \state -> (state, Right state)
 
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
 localEnv f (EvalM m) = EvalM $ \env -> \state -> m (f env) state
@@ -60,7 +63,9 @@ failure :: String -> EvalM a
 failure s = EvalM $ \_env -> \state -> (state , Left s)
 
 evalPrint :: String -> EvalM ()
-evalPrint s = EvalM $ \_env -> \state -> (state ++ [s], Right ())
+evalPrint s = do
+  state <- askState
+  EvalM $ \_env -> \_state -> (state ++ [s], Right ())
 
 catch :: EvalM a -> EvalM a -> EvalM a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env -> \state ->
@@ -151,7 +156,11 @@ eval (Apply e1 e2) = do
       failure "Cannot apply non-function"
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
--- eval (Print s e1) = do
---   val <- eval e1
---   state <- askEnv
---   evalPrint (s ++ ": " ++ show val)
+eval (Print s e1) = do
+  val <- eval e1
+  let shown =  case val of
+       ValInt n -> show n
+       ValFun {} -> "#<fun>"
+       ValBool b -> show b
+  evalPrint (s ++ ": " ++ shown)
+  pure val 

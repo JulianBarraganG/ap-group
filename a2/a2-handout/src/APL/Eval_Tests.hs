@@ -89,7 +89,11 @@ printTests :: TestTree
 printTests =
   testGroup
     "Task 1: Printing"
-    []
+    [
+      testCase "Print 'foo' int 1 returns updated state and val 1" $
+        eval' (Print "foo" (CstInt 2))
+        @?= (["foo: 2"], Right (ValInt 2))
+    ]
 
 kvTests :: TestTree
 kvTests =
@@ -98,4 +102,4 @@ kvTests =
     []
 
 tests :: TestTree
-tests = testGroup "Evaluation" [evalTests] --, printTests, kvTests]
+tests = testGroup "Evaluation" [evalTests, printTests]--, kvTests]

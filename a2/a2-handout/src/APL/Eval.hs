@@ -82,17 +82,6 @@ evalKvPut key value = do
   let kv_new = (key,value):(filter ((key /=).fst) kv)
   EvalM $ \_env -> \_state -> ((str_lst, kv_new), Right ())
 
---evalKvGet :: Val -> EvalM Val
---evalKvGet v = do
--- (_, kv) <- askState
--- val_from_kv kv v where
---   val_from_kv (x:xs) key =
---     case x of
---       (k, val)
---         |k == key -> EvalM $ \_env -> \state -> (state, Right val)
---         | otherwise -> val_from_kv xs key
---   val_from_kv [] _ = failure "Not in KV store"  
-
 catch :: EvalM a -> EvalM a -> EvalM a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env -> \state ->
   case m1 env state of

@@ -20,7 +20,7 @@ data Val
 
 type Env = [(VName, Val)]
 type Error = String
-type State = [String]
+type State = ([String], [(Val, Val)])
 
 newtype EvalM a = EvalM (Env -> State -> (State, Either Error a))
 
@@ -49,7 +49,7 @@ envLookup :: VName -> Env -> Maybe Val
 envLookup v env = lookup v env
 
 stateEmpty :: State
-stateEmpty = []
+stateEmpty = ([], [])
 
 askEnv :: EvalM Env
 askEnv = EvalM $ \env -> \_state -> (_state, Right env)
@@ -65,8 +65,33 @@ failure s = EvalM $ \_env -> \state -> (state , Left s)
 
 evalPrint :: String -> EvalM ()
 evalPrint s = do
-  state <- askState
-  EvalM $ \_env -> \_state -> (state ++ [s], Right ())
+  (str_lst, kv) <- askState
+  EvalM $ \_env -> \_state -> ((str_lst ++ [s], kv), Right ())
+
+
+evalKvGet :: Val -> EvalM Val
+evalKvGet key = do
+  (_, kv) <- askState 
+  case lookup key kv of 
+    Just val -> pure val
+    Nothing -> failure "Invalid key"
+
+evalKvPut :: Val -> Val -> EvalM ()
+evalKvPut key value = do
+  (str_lst, kv) <- askState
+  let kv_new = (key,value):(filter ((key /=).fst) kv)
+  EvalM $ \_env -> \_state -> ((str_lst, kv_new), Right ())
+
+--evalKvGet :: Val -> EvalM Val
+--evalKvGet v = do
+-- (_, kv) <- askState
+-- val_from_kv kv v where
+--   val_from_kv (x:xs) key =
+--     case x of
+--       (k, val)
+--         |k == key -> EvalM $ \_env -> \state -> (state, Right val)
+--         | otherwise -> val_from_kv xs key
+--   val_from_kv [] _ = failure "Not in KV store"  
 
 catch :: EvalM a -> EvalM a -> EvalM a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env -> \state ->
@@ -74,8 +99,10 @@ catch (EvalM m1) (EvalM m2) = EvalM $ \env -> \state ->
     (_, Left _) -> m2 env state
     (state', Right x) -> (state', Right x)
 
-runEval :: EvalM a -> (State, Either Error a)
-runEval (EvalM m) = m envEmpty stateEmpty
+runEval :: EvalM a -> ([String], Either Error a)
+runEval (EvalM m) = 
+  let ((str_lst, _), val) = m envEmpty stateEmpty 
+    in (str_lst, val)
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
@@ -165,3 +192,13 @@ eval (Print s e1) = do
        ValBool b -> show b
   evalPrint (s ++ ": " ++ shown)
   pure val 
+
+eval (KvPut e1 e2) = do
+  k <- eval e1
+  v <- eval e2
+  k `evalKvPut` v
+  pure v
+
+eval (KvGet e1) = do
+  k <- eval e1
+  evalKvGet k

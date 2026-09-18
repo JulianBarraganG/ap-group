@@ -5,6 +5,7 @@ module APL.Eval
     Error,
     State,
     stateEmpty,
+    envEmpty,
   )
 where
 

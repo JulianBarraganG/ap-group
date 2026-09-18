@@ -1,7 +1,7 @@
 module APL.Eval_Tests (tests) where
 
 import APL.AST (Exp (..))
-import APL.Eval (Error, State, Val (..), eval, runEval, stateEmpty)
+import APL.Eval (Error, State, Val (..), eval, runEval, stateEmpty, envEmpty)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
@@ -90,9 +90,34 @@ printTests =
   testGroup
     "Task 1: Printing"
     [
-      testCase "Print 'foo' int 1 returns updated state and val 1" $
+      testCase "Print 'foo' int 2 returns updated state and val 2" $
         eval' (Print "foo" (CstInt 2))
-        @?= (["foo: 2"], Right (ValInt 2))
+        @?= (["foo: 2"], Right (ValInt 2)),
+
+      testCase "Print 'foo' Add (2 2) returns updated state and val 4" $
+        eval' (Print "foo" (Add (CstInt 2) (CstInt 2)))
+        @?= (["foo: 4"], Right (ValInt 4)),
+
+
+     testCase "Print 'bar' True returns a state containing 'bar: True'" $
+       eval' (Print "bar" (CstBool True))
+       @?= (["bar: True"], Right (ValBool True)),
+
+     testCase "Print with an expression evaluation to an error returns the error" $
+       eval' (Print "foo" (Div (CstInt 2) (CstInt 0)))
+       @?= ([], Left "Division by zero"),
+
+      testCase "Print with a fun returns '#<fun>'" $
+        eval' (Print "fun" (Lambda "x" (Mul (Var "x") (Var "x"))))
+        @?= (["fun: #<fun>"], Right $ ValFun envEmpty "x" (Mul (Var "x") (Var "x"))),
+
+      testCase "First string to be printed is first in the list" $
+        eval' ( Let "x" (Print "foo" $ CstInt 2) (Print "bar" $ CstInt 3)) 
+        @?= (["foo: 2","bar: 3"],Right (ValInt 3)),
+      
+      testCase "Good Print expressions are added, even though full expression fails" $
+        eval' (Let "x" (Print "foo" $ CstInt 2) (Div (CstInt 1) (CstInt 0)))
+        @?= (["foo: 2"], Left "Division by zero")
     ]
 
 kvTests :: TestTree

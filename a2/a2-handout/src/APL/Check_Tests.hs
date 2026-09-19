@@ -39,7 +39,6 @@ tests =
       testNeg (Let "x" (Add (Var "x") (CstInt 5)) (CstInt 3)),
       testPos (Let "x" (CstInt 1) (Lambda "y" (Add (Var "x") (Var "y")))),
 
-
       testPos (ForLoop ("p", (CstInt 0)) ("i", (CstInt 10)) (Add (Var "p") (Var "i"))),
       testNeg (ForLoop ("p", (Add (Var "i") (CstInt 2))) ("i", (CstInt 10)) (Add (Var "p") (Var "i"))),
       testNeg (ForLoop ("p", (Add (Var "p") (CstInt 2))) ("i", (CstInt 10)) (Add (Var "p") (Var "i"))),

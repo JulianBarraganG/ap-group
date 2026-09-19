@@ -83,11 +83,18 @@ evalTests =
         eval'
           (TryCatch (Div (CstInt 7) (CstInt 0)) (CstBool True))
           @?= ([], Right (ValBool True)),
-
-     testCase "TryCatch failed e1 effects not visible in e2" $
-       eval' (TryCatch (Let "x" (Print "foo" $ CstInt 2) (Div (CstInt 1) (CstInt 0))) (CstInt 2))
-       @?= ([], Right (ValInt 2))
-
+      --
+      testCase "TryCatch failed e1 effects not visible in e2" $
+        eval' (TryCatch (Let "x" (Print "foo" $ CstInt 2) (Div (CstInt 1) (CstInt 0))) (CstInt 2))
+        @?= ([], Right (ValInt 2)),
+      --
+      testCase "TryCatch: KvPut from failed e1 is rolled back" $
+        eval' (
+                TryCatch 
+                  (Let "x" (KvPut (CstInt 0) (CstBool True)) (Div (CstInt 1) (CstInt 0)))
+                  (KvGet (CstInt 0))
+              )
+        @?= ([], Left "Invalid key")
     ]
 
 printTests :: TestTree

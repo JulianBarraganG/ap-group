@@ -186,8 +186,8 @@ eval (Print s e1) = do
   val <- eval e1
   let shown =  case val of
        ValInt n -> show n
-       ValFun {} -> "#<fun>"
        ValBool b -> show b
+       ValFun {} -> "#<fun>"
   evalPrint (s ++ ": " ++ shown)
   pure val 
 

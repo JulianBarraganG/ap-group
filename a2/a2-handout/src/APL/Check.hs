@@ -7,7 +7,7 @@ import Control.Monad (ap, liftM)
 type Error = String
 type EnvVars = [VName]
 
-newtype CheckM a = CheckM (EnvVars -> Either Error a) -- TODO - give this a proper definition.
+newtype CheckM a = CheckM (EnvVars -> Either Error a)
 
 instance Functor CheckM where
   fmap = liftM

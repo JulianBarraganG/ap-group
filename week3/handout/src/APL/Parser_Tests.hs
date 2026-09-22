@@ -36,5 +36,9 @@ tests =
       parserTest "23" (CstInt 23),
       parserTestFail "2w",
       parserTest "2   " (CstInt 2), 
-      parserTest "     1" (CstInt 1)
+      parserTest "     1" (CstInt 1),
+      parserTest "ab1" (Var "ab1"),
+      parserTest "true" (CstBool True),
+      parserTest "false" (CstBool False),
+      parserTestFail "falsexx"
     ]

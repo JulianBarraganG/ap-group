@@ -27,10 +27,10 @@ parserTestFail s =
         assertFailure $
           "Expected parse error but received this AST:\n" ++ show e
 
-tests :: TestTree
-tests =
+baseParserTests :: TestTree
+baseParserTests =
   testGroup
-    "Parsing"
+    "Basic parser tests"
     [
       parserTest "2" (CstInt 2),
       parserTest "23" (CstInt 23),
@@ -43,3 +43,22 @@ tests =
       parserTest "false" (CstBool False),
       parserTestFail "falsexx"
     ]
+
+leftRecursionTests :: TestTree
+leftRecursionTests =
+  testGroup
+    "Left recursion tests"
+      [
+        parserTest "x" (Var "x"),
+        parserTest "x + y" (Add (Var "x") (Var "y")),
+        parserTest "x+y" (Add (Var "x") (Var "y")),
+        parserTest "x-y" (Sub (Var "x") (Var "y")),
+        parserTest "x*y" (Mul (Var "x") (Var "y")),
+        parserTest "x/y" (Div (Var "x") (Var "y")),
+        parserTest "x+y*z" (Add (Var "x") (Mul (Var "y") (Var "z"))),
+        parserTest "x+(y*z)" (Add (Var "x") (Mul (Var "y") (Var "z"))),
+        parserTest "if x then x else x + x" (If (Var "x") (Var "x") (Add (Var "x") (Var "x")))
+      ]
+
+tests :: TestTree
+tests = testGroup "Parsing" [baseParserTests, leftRecursionTests]

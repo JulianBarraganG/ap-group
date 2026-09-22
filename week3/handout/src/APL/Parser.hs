@@ -13,7 +13,7 @@ import Text.Megaparsec
     many,
     notFollowedBy,
     parse,
-    -- parseTest,
+    parseTest,
     satisfy,
     some,
     try,
@@ -41,14 +41,18 @@ lVName = lexeme $ try $ do
     then fail keywordErr
     else pure v
     
+infixOps :: [String]
+infixOps = ["+", "-", "*", "/"]
 
 keywords :: [String]
-keywords = ["true", "false", "if"]
+keywords = ["true", "false", "if", "then", "else"] ++ infixOps
+
 
 lKeyword :: String -> Parser ()
-lKeyword s = lexeme $ do
-  void $ chunk s
-  notFollowedBy (satisfy isAlpha)
+lKeyword s = lexeme $ void $ chunk s <* notFollowedBy (satisfy isAlphaNum)
+
+lInfix :: String -> Parser ()
+lInfix s = lexeme $ void $ try $ chunk s
 
 pBool :: Parser Bool
 pBool = 
@@ -57,13 +61,63 @@ pBool =
       lKeyword "false" >> pure False
     ]
 
-pExp :: Parser Exp
-pExp = 
+pAtom :: Parser Exp
+pAtom =
   choice
     [ CstInt <$> lInteger,
       CstBool <$> pBool,
-      Var <$> lVName
+      Var <$> lVName,
+      lInfix "(" *> pExp <* lInfix ")"
     ]
+
+pLExp :: Parser Exp
+pLExp =
+  choice
+  [ If
+      <$> (lKeyword "if" *> pExp0)
+      <*> (lKeyword "then" *> pExp0)
+      <*> (lKeyword "else" *> pExp0),
+    pAtom
+  ]
+
+pExp0 :: Parser Exp
+pExp0 = do
+  x <- pExp1
+  chain x
+  where
+    chain x = 
+      choice
+        [ do
+            lInfix "+"
+            y <- pExp1
+            chain $ Add x y,
+          do
+            lInfix "-"
+            y <- pExp1
+            chain $ Sub x y,
+          pure x
+        ]
+
+pExp1 :: Parser Exp
+pExp1 = do
+  x <- pLExp
+  chain x
+  where
+    chain x =
+      choice
+        [ do
+            lInfix "*"
+            y <- pLExp
+            chain $ Mul x y,
+          do
+            lInfix "/"
+            y <- pLExp
+            chain $ Div x y,
+          pure x
+        ]
+
+pExp :: Parser Exp
+pExp = pExp0
 
 -- Do not change this definition.
 parseAPL :: FilePath -> String -> Either String Exp

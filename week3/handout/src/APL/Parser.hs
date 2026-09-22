@@ -2,7 +2,7 @@ module APL.Parser (parseAPL) where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (void)
-import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
+import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Data.Void (Void)
 import Text.Megaparsec
   ( Parsec,
@@ -13,7 +13,7 @@ import Text.Megaparsec
     many,
     notFollowedBy,
     parse,
-    parseTest,
+    -- parseTest,
     satisfy,
     some,
     try,
@@ -23,21 +23,27 @@ import Text.Megaparsec.Char (space)
 -- Do not change this definition.
 type Parser = Parsec Void String
 
+keywordErr :: String
+keywordErr = "Unexpected keyword"
 
 lexeme :: Parser a -> Parser a
 lexeme p = p <* space
 
 lInteger :: Parser Integer
-lInteger = lexeme (read <$> some (satisfy isDigit)) <* notFollowedBy (satisfy isAlpha)
+lInteger = lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlpha)
 
 lVName :: Parser VName
-lVName = lexeme $ do
+lVName = lexeme $ try $ do
   c <- satisfy isAlpha
   cs <- many $ satisfy isAlphaNum
-  pure $ (c : cs)
+  let v = c : cs
+  if v `elem` keywords
+    then fail keywordErr
+    else pure v
+    
 
 keywords :: [String]
-keywords = ["true", "false"]
+keywords = ["true", "false", "if"]
 
 lKeyword :: String -> Parser ()
 lKeyword s = lexeme $ do

@@ -33,6 +33,7 @@ tests =
     "Parsing"
     [
       parserTest "ab1" (Var "ab1"),
+      parserTestFail "if",
       parserTest "true" (CstBool True),
       parserTest "false" (CstBool False),
       parserTestFail "falsexx"

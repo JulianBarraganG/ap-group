@@ -32,6 +32,11 @@ tests =
   testGroup
     "Parsing"
     [
+      parserTest "2" (CstInt 2),
+      parserTest "23" (CstInt 23),
+      parserTestFail "2w",
+      parserTest "2   " (CstInt 2), 
+      parserTest "     1" (CstInt 1),
       parserTest "ab1" (Var "ab1"),
       parserTestFail "if",
       parserTest "true" (CstBool True),

@@ -31,4 +31,9 @@ tests :: TestTree
 tests =
   testGroup
     "Parsing"
-    []
+    [
+      parserTest "ab1" (Var "ab1"),
+      parserTest "true" (CstBool True),
+      parserTest "false" (CstBool False),
+      parserTestFail "falsexx"
+    ]

@@ -16,7 +16,6 @@ import Text.Megaparsec
     satisfy,
     some,
     try,
-    parseTest,
   )
 import Text.Megaparsec.Char (space)
 
@@ -73,14 +72,8 @@ pBool =
       const False <$> lKeyword "false"
     ]
 
-pAtom :: Parser Exp
-pAtom =
-  choice
-    [ CstInt <$> lInteger,
-      CstBool <$> pBool,
-      Var <$> lVName,
-      lString "(" *> pExp <* lString ")"
-    ]
+pString :: Parser String
+pString = (lString "\"" *> some (satisfy (/= '"')) <* lString "\"")
 
 pTuple :: String -> Parser (VName, Exp)
 pTuple s = do
@@ -89,6 +82,15 @@ pTuple s = do
   e <- pExp
   pure (vname, e)
 
+-- Grammar Parsers
+pAtom :: Parser Exp
+pAtom =
+  choice
+    [ CstInt <$> lInteger,
+      CstBool <$> pBool,
+      Var <$> lVName,
+      lString "(" *> pExp <* lString ")"
+    ]
 
 pFExp :: Parser Exp
 pFExp = pAtom >>= chain
@@ -100,17 +102,6 @@ pFExp = pAtom >>= chain
             chain $ Apply x y,
           pure x
         ]
-
-
-pTuple :: String -> Parser (VName, Exp)
-pTuple s = do
-  vname <- lVName
-  lexeme $ lKeyword s
-  exp <- pExp
-  pure (vname, exp)
-
-pString :: Parser String
-pString = (lString "\"" *> some (satisfy (/= '"')) <* lString "\"")
 
 pLExp :: Parser Exp
 pLExp =
@@ -205,7 +196,7 @@ pExp0 = pExp1 >>= chain
 pExp :: Parser Exp
 pExp = pExp0
 
-
+-- Parse function for APL
 parseAPL :: FilePath -> String -> Either String Exp
 parseAPL fname s = case parse (space *> pExp <* eof) fname s of
   Left err -> Left $ errorBundlePretty err

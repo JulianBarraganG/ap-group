@@ -1,0 +1,12 @@
+Atom ::= var | int | bool | “(” Exp “)”
+LExp ::= Atom | “if” Exp “then” Exp “else” Exp
+Exp ::= LExp
+     | Exp “+” Exp
+     | Exp “-” Exp
+     | Exp “*” Exp
+     | Exp “/” Exp
+     | Exp “**” Exp
+     | Exp “==” Exp
+	 | "get" Atom
+	 | "put" Atom Atom
+	 | "print" string atom

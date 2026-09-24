@@ -82,8 +82,25 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
+pTuple :: String -> Parser (VName, Exp)
+pTuple s = do
+  vname <- lVName
+  lexeme $ lKeyword s
+  e <- pExp
+  pure (vname, e)
+
+
 pFExp :: Parser Exp
-pFExp = undefined
+pFExp = pAtom >>= chain
+  where
+    chain x =
+      choice
+        [ do
+            y <- pAtom
+            chain $ Apply x y,
+          pure x
+        ]
+
 
 pTuple :: String -> Parser (VName, Exp)
 pTuple s = do
@@ -116,7 +133,7 @@ pLExp =
         <$> (lKeyword "loop" *> pTuple "=")
         <*> (lKeyword "for" *> pTuple "<")
         <*> (lKeyword "do" *> pExp),
-      pAtom
+      pFExp
     ]
 
 pExp4 :: Parser Exp

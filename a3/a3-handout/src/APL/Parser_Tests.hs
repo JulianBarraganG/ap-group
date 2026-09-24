@@ -39,7 +39,9 @@ tests =
         [ parserTest "x+y" $ Add (Var "x") (Var "y"),
           parserTest "x-y" $ Sub (Var "x") (Var "y"),
           parserTest "x*y" $ Mul (Var "x") (Var "y"),
-          parserTest "x/y" $ Div (Var "x") (Var "y")
+          parserTest "x/y" $ Div (Var "x") (Var "y"),
+          parserTest "x==y" $ Eql (Var "x") (Var "y"),
+          parserTest "x**y" $ Pow (Var "x") (Var "y")
         ],
       testGroup
         "Operator priority"
@@ -47,7 +49,10 @@ tests =
           parserTest "x+y-z" $ Sub (Add (Var "x") (Var "y")) (Var "z"),
           parserTest "x+y*z" $ Add (Var "x") (Mul (Var "y") (Var "z")),
           parserTest "x*y*z" $ Mul (Mul (Var "x") (Var "y")) (Var "z"),
-          parserTest "x/y/z" $ Div (Div (Var "x") (Var "y")) (Var "z")
+          parserTest "x/y/z" $ Div (Div (Var "x") (Var "y")) (Var "z"),
+          parserTest "x==x+y" $ Eql (Var "x") (Add (Var "x") (Var "y")),
+          parserTest "x**x+y" $ Add (Pow (Var "x") (Var "x")) (Var "y"),
+          parserTest "x+x**y" $ Add (Var "x") (Pow (Var "x") (Var "y"))
         ],
       testGroup
         "Conditional expressions"
@@ -59,6 +64,19 @@ tests =
             If (Var "x") (If (Var "x") (Var "y") (Var "z")) (Var "z"),
           parserTest "1 + if x then y else z" $
             Add (CstInt 1) (If (Var "x") (Var "y") (Var "z"))
+        ],
+      testGroup
+        "Putting, printing and getting"
+        [ parserTest "get x" $ KvGet (Var "x"),
+          parserTest "get x + y" $ Add (KvGet (Var "x")) (Var "y"),
+          parserTest "get (x + y)" $ KvGet (Add (Var "x") (Var "y")),
+          parserTest "put x y" $ KvPut (Var "x") (Var "y"),
+          parserTest "put x y + z" $ Add (KvPut (Var "x") (Var "y")) (Var "z"),
+          parserTest "put x (y + z)" $ KvPut (Var "x") (Add (Var "y") (Var "z")),
+          parserTest "print \"foo\" x" $ Print "foo" (Var "x"),
+          parserTest "print \"foo has a value\" x" $ Print "foo has a value" (Var "x"), -- alphanum w/ spaces
+          parserTest "print \"@.foo-=\bbar!_?\" x" $ Print "@.foo-=\bbar!_?" (Var "x"), -- alphanum w/ special chars
+          parserTest "print \"put (foo + bar)\" x" $ Print "put (foo + bar)" (Var "x") -- operators
         ],
       testGroup
         "Lexing edge cases"

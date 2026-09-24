@@ -1,9 +1,11 @@
 module APL.Eval
   ( Val (..),
-    Env,
     eval,
     runEval,
     Error,
+    State,
+    stateEmpty,
+    envEmpty,
   )
 where
 
@@ -17,6 +19,25 @@ data Val
   deriving (Eq, Show)
 
 type Env = [(VName, Val)]
+type Error = String
+type State = ([String], [(Val, Val)])
+
+newtype EvalM a = EvalM (Env -> State -> (State, Either Error a))
+
+instance Functor EvalM where
+  fmap = liftM
+
+instance Applicative EvalM where
+  pure x = EvalM $ \_env -> \state -> (state, Right x)
+  (<*>) = ap
+
+instance Monad EvalM where
+  EvalM x >>= f = EvalM $ \env -> \state ->
+    case x env state of
+      (state', Left err) -> (state', Left err)
+      (state', Right x') ->
+        let EvalM y = f x'
+         in y env state'
 
 envEmpty :: Env
 envEmpty = []
@@ -27,42 +48,50 @@ envExtend v val env = (v, val) : env
 envLookup :: VName -> Env -> Maybe Val
 envLookup v env = lookup v env
 
-type Error = String
-
-newtype EvalM a = EvalM (Env -> Either Error a)
-
-instance Functor EvalM where
-  fmap = liftM
-
-instance Applicative EvalM where
-  pure x = EvalM $ \_env -> Right x
-  (<*>) = ap
-
-instance Monad EvalM where
-  EvalM x >>= f = EvalM $ \env ->
-    case x env of
-      Left err -> Left err
-      Right x' ->
-        let EvalM y = f x'
-         in y env
+stateEmpty :: State
+stateEmpty = ([], [])
 
 askEnv :: EvalM Env
-askEnv = EvalM $ \env -> Right env
+askEnv = EvalM $ \env -> \_state -> (_state, Right env)
+
+askState :: EvalM State
+askState = EvalM $ \_env -> \state -> (state, Right state)
 
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
-localEnv f (EvalM m) = EvalM $ \env -> m (f env)
+localEnv f (EvalM m) = EvalM $ \env -> \state -> m (f env) state
 
 failure :: String -> EvalM a
-failure s = EvalM $ \_env -> Left s
+failure s = EvalM $ \_env -> \state -> (state , Left s)
+
+evalPrint :: String -> EvalM ()
+evalPrint s = do
+  (str_lst, kv) <- askState
+  EvalM $ \_env -> \_state -> ((str_lst ++ [s], kv), Right ())
+
+
+evalKvGet :: Val -> EvalM Val
+evalKvGet key = do
+  (_, kv) <- askState 
+  case lookup key kv of 
+    Just val -> pure val
+    Nothing -> failure "Invalid key"
+
+evalKvPut :: Val -> Val -> EvalM ()
+evalKvPut key value = do
+  (str_lst, kv) <- askState
+  let kv_new = (key,value):(filter ((key /=).fst) kv)
+  EvalM $ \_env -> \_state -> ((str_lst, kv_new), Right ())
 
 catch :: EvalM a -> EvalM a -> EvalM a
-catch (EvalM m1) (EvalM m2) = EvalM $ \env ->
-  case m1 env of
-    Left _ -> m2 env
-    Right x -> Right x
+catch (EvalM m1) (EvalM m2) = EvalM $ \env -> \state ->
+  case m1 env state of
+    (_, Left _) -> m2 env state
+    (state', Right x) -> (state', Right x)
 
 runEval :: EvalM a -> ([String], Either Error a)
-runEval (EvalM m) = ([], m envEmpty)
+runEval (EvalM m) = 
+  let ((str_lst, _), val) = m envEmpty stateEmpty 
+    in (str_lst, val)
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
@@ -86,6 +115,7 @@ eval (Var v) = do
   case envLookup v env of
     Just x -> pure x
     Nothing -> failure $ "Unknown variable: " ++ v
+
 eval (Add e1 e2) = evalIntBinOp' (+) e1 e2
 eval (Sub e1 e2) = evalIntBinOp' (-) e1 e2
 eval (Mul e1 e2) = evalIntBinOp' (*) e1 e2
@@ -93,12 +123,14 @@ eval (Div e1 e2) = evalIntBinOp checkedDiv e1 e2
   where
     checkedDiv _ 0 = failure "Division by zero"
     checkedDiv x y = pure $ x `div` y
+
 eval (Pow e1 e2) = evalIntBinOp checkedPow e1 e2
   where
     checkedPow x y =
       if y < 0
         then failure "Negative exponent"
         else pure $ x ^ y
+
 eval (Eql e1 e2) = do
   v1 <- eval e1
   v2 <- eval e2
@@ -106,15 +138,35 @@ eval (Eql e1 e2) = do
     (ValInt x, ValInt y) -> pure $ ValBool $ x == y
     (ValBool x, ValBool y) -> pure $ ValBool $ x == y
     (_, _) -> failure "Invalid operands to equality"
+
 eval (If cond e1 e2) = do
   cond' <- eval cond
   case cond' of
     ValBool True -> eval e1
     ValBool False -> eval e2
     _ -> failure "Non-boolean conditional."
+
 eval (Let var e1 e2) = do
   v1 <- eval e1
   localEnv (envExtend var v1) $ eval e2
+
+eval (ForLoop (loopparam, initial) (iv, bound) body) = do
+  initial_v <- eval initial
+  bound_v <- eval bound
+  case bound_v of
+    ValInt bound_int ->
+      loop 0 bound_int initial_v
+    _ ->
+      failure "Non-integral loop bound"
+  where
+    loop i bound_int acc
+      | i >= bound_int = pure acc
+      | otherwise = do
+          acc' <-
+            localEnv (envExtend iv (ValInt i) . envExtend loopparam acc) $
+              eval body
+          loop (succ i) bound_int acc'
+
 eval (Lambda var body) = do
   env <- askEnv
   pure $ ValFun env var body
@@ -126,7 +178,25 @@ eval (Apply e1 e2) = do
       localEnv (const $ envExtend var arg f_env) $ eval body
     (_, _) ->
       failure "Cannot apply non-function"
+
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
-eval e =
-  error $ "Evaluation of this expression not implemented:\n" ++ show e
+
+eval (Print s e1) = do
+  val <- eval e1
+  let shown =  case val of
+       ValInt n -> show n
+       ValBool b -> show b
+       ValFun {} -> "#<fun>"
+  evalPrint (s ++ ": " ++ shown)
+  pure val 
+
+eval (KvPut e1 e2) = do
+  k <- eval e1
+  v <- eval e2
+  k `evalKvPut` v
+  pure v
+
+eval (KvGet e1) = do
+  k <- eval e1
+  evalKvGet k

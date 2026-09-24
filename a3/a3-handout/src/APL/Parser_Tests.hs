@@ -52,7 +52,9 @@ tests =
           parserTest "x/y/z" $ Div (Div (Var "x") (Var "y")) (Var "z"),
           parserTest "x==x+y" $ Eql (Var "x") (Add (Var "x") (Var "y")),
           parserTest "x**x+y" $ Add (Pow (Var "x") (Var "x")) (Var "y"),
-          parserTest "x+x**y" $ Add (Var "x") (Pow (Var "x") (Var "y"))
+          parserTest "x+x**y" $ Add (Var "x") (Pow (Var "x") (Var "y")),
+          -- Power should be right-associative
+          parserTest "x**y**z" $ Pow (Var "x") (Pow (Var "y") (Var "z"))
         ],
       testGroup
         "Conditional expressions"

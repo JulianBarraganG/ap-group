@@ -143,7 +143,7 @@ pExp3 = pExp4 >>= chain
       choice
         [ do
             lString "**"
-            y <- pExp4
+            y <- pExp3
             chain $ Pow x y,
           pure x
         ]

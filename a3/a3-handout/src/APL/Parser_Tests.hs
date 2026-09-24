@@ -66,6 +66,16 @@ tests =
             Add (CstInt 1) (If (Var "x") (Var "y") (Var "z"))
         ],
       testGroup
+        "Function Expressions (LExp)"
+        [ parserTest "try x catch y" $ TryCatch (Var "x") (Var "y"),
+          parserTest "try (x / y) catch z" $ TryCatch (Div (Var "x") (Var "y")) (Var "z"),
+          parserTest "let x = x in x" $ Let "x" (Var "x") (Var "x"),
+          parserTest "let x = 1 in (x + y)" $ Let "x" (CstInt 1) (Add (Var "x") (Var "y")),
+          parserTest "\\x -> x" $ Lambda "x" (Var "x"),
+          parserTest "\\x -> x + x" $ Lambda "x" (Add (Var "x") (Var "x")),
+          parserTest "loop i = 1 for p < 10 do y" $ ForLoop ("i", CstInt 1) ("p", CstInt 10) (Var "y")
+        ],
+      testGroup
         "Putting, printing and getting"
         [ parserTest "get x" $ KvGet (Var "x"),
           parserTest "get x + y" $ Add (KvGet (Var "x")) (Var "y"),

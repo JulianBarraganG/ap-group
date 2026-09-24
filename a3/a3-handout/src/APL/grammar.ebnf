@@ -1,5 +1,6 @@
 Atom ::= var | int | bool | “(” Exp “)”
-LExp ::= Atom 
+FExp ::= Atom | FExp FExp
+LExp ::= FExp
      | “if” Exp “then” Exp “else” Exp
      | “\” var “->” Exp
      | “try” Exp “catch” Exp

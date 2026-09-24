@@ -34,7 +34,17 @@ keywords =
     "false",
     "put",
     "get",
-    "print"
+    "print",
+    "try",
+    "catch",
+    "let",
+    "in",
+    "=",
+    "<",
+    "->",
+    "loop",
+    "for",
+    "do"
   ]
 
 lVName :: Parser VName
@@ -75,6 +85,13 @@ pAtom =
 pFExp :: Parser Exp
 pFExp = undefined
 
+pTuple :: String -> Parser (VName, Exp)
+pTuple s = do
+  vname <- lVName
+  lexeme $ lKeyword s
+  exp <- pExp
+  pure (vname, exp)
+
 pString :: Parser String
 pString = (lString "\"" *> some (satisfy (/= '"')) <* lString "\"")
 
@@ -85,6 +102,20 @@ pLExp =
         <$> (lKeyword "if" *> pExp)
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
+      Lambda
+        <$> (lString "\\" *> lVName)
+        <*> (lKeyword "->" *> pExp),
+      TryCatch
+        <$> (lKeyword "try" *> pExp)
+        <*> (lKeyword "catch" *> pExp),
+      Let
+        <$> (lKeyword "let" *> lVName)
+        <*> (lKeyword "=" *> pExp)
+        <*> (lKeyword "in" *> pExp),
+      ForLoop
+        <$> (lKeyword "loop" *> pTuple "=")
+        <*> (lKeyword "for" *> pTuple "<")
+        <*> (lKeyword "do" *> pExp),
       pAtom
     ]
 

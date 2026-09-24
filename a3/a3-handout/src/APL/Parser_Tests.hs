@@ -79,6 +79,14 @@ tests =
           parserTest "print \"put (foo + bar)\" x" $ Print "put (foo + bar)" (Var "x") -- operators
         ],
       testGroup
+        "Functions"
+        [
+          parserTest "loop i = 0 for p < 10 do (i+p)" $ ForLoop ("i", CstInt 0) ("p", CstInt 10) (Add (Var "i") (Var "p")),
+          parserTest "x y" $ Apply (Var "x") (Var "y"),
+          parserTest "x y z" $ Apply (Apply (Var "x") (Var "y")) (Var "z"),
+          parserTest "x" $ Var "x"
+        ],
+      testGroup
         "Lexing edge cases"
         [ parserTest "2 " $ CstInt 2,
           parserTest " 2" $ CstInt 2

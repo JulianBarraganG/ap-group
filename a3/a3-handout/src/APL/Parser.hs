@@ -47,7 +47,7 @@ keywords =
   ]
 
 lVName :: Parser VName
-lVName = lexeme $ try $ do
+lVName = lexeme $ do
   c <- satisfy isAlpha
   cs <- many $ satisfy isAlphaNum
   let v = c : cs
@@ -88,8 +88,8 @@ pAtom =
   choice
     [ CstInt <$> lInteger,
       CstBool <$> pBool,
-      Var <$> lVName,
-      lString "(" *> pExp <* lString ")"
+      lString "(" *> pExp <* lString ")",
+      Var <$> lVName
     ]
 
 pFExp :: Parser Exp

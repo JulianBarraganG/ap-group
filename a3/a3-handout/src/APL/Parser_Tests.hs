@@ -51,10 +51,14 @@ tests =
           parserTest "x*y*z" $ Mul (Mul (Var "x") (Var "y")) (Var "z"),
           parserTest "x/y/z" $ Div (Div (Var "x") (Var "y")) (Var "z"),
           parserTest "x==x+y" $ Eql (Var "x") (Add (Var "x") (Var "y")),
+          parserTest "x==y==z" $ Eql(Eql (Var "x") (Var "y"))(Var "z"),
           parserTest "x**x+y" $ Add (Pow (Var "x") (Var "x")) (Var "y"),
           parserTest "x+x**y" $ Add (Var "x") (Pow (Var "x") (Var "y")),
+          parserTest "x*x**y" $ Mul (Var "x") (Pow (Var "x") (Var "y")),
           -- Power should be right-associative
-          parserTest "x**y**z" $ Pow (Var "x") (Pow (Var "y") (Var "z"))
+          parserTest "x**y**z" $ Pow (Var "x") (Pow (Var "y") (Var "z")),
+          parserTest "x(y z)" $ Apply (Var "x") (Apply (Var "y") (Var ("z")))
+
         ],
       testGroup
         "Conditional expressions"
@@ -75,7 +79,9 @@ tests =
           parserTest "let x = 1 in (x + y)" $ Let "x" (CstInt 1) (Add (Var "x") (Var "y")),
           parserTest "\\x -> x" $ Lambda "x" (Var "x"),
           parserTest "\\x -> x + x" $ Lambda "x" (Add (Var "x") (Var "x")),
-          parserTest "loop i = 1 for p < 10 do y" $ ForLoop ("i", CstInt 1) ("p", CstInt 10) (Var "y")
+          parserTest "(\\x -> x) + x" $ Add (Lambda "x" (Var "x")) (Var "x"),
+          parserTest "loop i = 1 for p < 10 do y" $ ForLoop ("i", CstInt 1) ("p", CstInt 10) (Var "y"),
+          parserTestFail "let true = y in z" 
         ],
       testGroup
         "Putting, printing and getting"
@@ -96,7 +102,11 @@ tests =
           parserTest "loop i = 0 for p < 10 do (i+p)" $ ForLoop ("i", CstInt 0) ("p", CstInt 10) (Add (Var "i") (Var "p")),
           parserTest "x y" $ Apply (Var "x") (Var "y"),
           parserTest "x y z" $ Apply (Apply (Var "x") (Var "y")) (Var "z"),
-          parserTest "x" $ Var "x"
+          parserTest "x" $ Var "x",
+          parserTest "getx" $ Var "getx",
+          parserTestFail "get get",
+          parserTestFail "x if x then y else z",
+          parserTestFail "x let v = 2 in v"
         ],
       testGroup
         "Lexing edge cases"

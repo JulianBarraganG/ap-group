@@ -47,7 +47,7 @@ keywords =
   ]
 
 lVName :: Parser VName
-lVName = lexeme $ do
+lVName = lexeme $ try $ do
   c <- satisfy isAlpha
   cs <- many $ satisfy isAlphaNum
   let v = c : cs

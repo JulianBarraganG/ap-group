@@ -20,7 +20,7 @@ evalIntBinOp' f e1 e2 =
   where
     f' x y = pure $ f x y
 
--- Replace with your 'eval' from your solution to assignment 2.
+-- Inserted from a2
 eval :: Exp -> EvalM Val
 eval (CstInt x) = pure $ ValInt x
 eval (CstBool b) = pure $ ValBool b
@@ -29,6 +29,7 @@ eval (Var v) = do
   case envLookup v env of
     Just x -> pure x
     Nothing -> failure $ "Unknown variable: " ++ v
+
 eval (Add e1 e2) = evalIntBinOp' (+) e1 e2
 eval (Sub e1 e2) = evalIntBinOp' (-) e1 e2
 eval (Mul e1 e2) = evalIntBinOp' (*) e1 e2
@@ -36,12 +37,14 @@ eval (Div e1 e2) = evalIntBinOp checkedDiv e1 e2
   where
     checkedDiv _ 0 = failure "Division by zero"
     checkedDiv x y = pure $ x `div` y
+
 eval (Pow e1 e2) = evalIntBinOp checkedPow e1 e2
   where
     checkedPow x y =
       if y < 0
         then failure "Negative exponent"
         else pure $ x ^ y
+
 eval (Eql e1 e2) = do
   v1 <- eval e1
   v2 <- eval e2
@@ -49,15 +52,18 @@ eval (Eql e1 e2) = do
     (ValInt x, ValInt y) -> pure $ ValBool $ x == y
     (ValBool x, ValBool y) -> pure $ ValBool $ x == y
     (_, _) -> failure "Invalid operands to equality"
+
 eval (If cond e1 e2) = do
   cond' <- eval cond
   case cond' of
     ValBool True -> eval e1
     ValBool False -> eval e2
     _ -> failure "Non-boolean conditional."
+
 eval (Let var e1 e2) = do
   v1 <- eval e1
   localEnv (envExtend var v1) $ eval e2
+
 eval (ForLoop (loopparam, initial) (iv, bound) body) = do
   initial_v <- eval initial
   bound_v <- eval bound
@@ -67,13 +73,14 @@ eval (ForLoop (loopparam, initial) (iv, bound) body) = do
     _ ->
       failure "Non-integral loop bound"
   where
-    loop i bound_int loop_v
-      | i >= bound_int = pure loop_v
+    loop i bound_int acc
+      | i >= bound_int = pure acc
       | otherwise = do
-          loop_v' <-
-            localEnv (envExtend iv (ValInt i) . envExtend loopparam loop_v) $
+          acc' <-
+            localEnv (envExtend iv (ValInt i) . envExtend loopparam acc) $
               eval body
-          loop (succ i) bound_int loop_v'
+          loop (succ i) bound_int acc'
+
 eval (Lambda var body) = do
   env <- askEnv
   pure $ ValFun env var body
@@ -85,5 +92,25 @@ eval (Apply e1 e2) = do
       localEnv (const $ envExtend var arg f_env) $ eval body
     (_, _) ->
       failure "Cannot apply non-function"
+
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
+
+eval (Print s e1) = do
+  val <- eval e1
+  let shown =  case val of
+       ValInt n -> show n
+       ValBool b -> show b
+       ValFun {} -> "#<fun>"
+  evalPrint (s ++ ": " ++ shown)
+  pure val 
+
+eval (KvPut e1 e2) = do
+  k <- eval e1
+  v <- eval e2
+  k `evalKvPut` v
+  pure v
+
+eval (KvGet e1) = do
+  k <- eval e1
+  evalKvGet k

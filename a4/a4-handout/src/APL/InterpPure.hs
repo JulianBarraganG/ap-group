@@ -18,9 +18,10 @@ runEval = runEval' envEmpty stateInitial
         (p1, Left _) -> case runEval' r s m2 of
           (p2', Right x) -> let (ps, res) = runEval' r s $ k x in (p1 ++ p2' ++ ps, res)
           (p2, Left e) ->  ((p1 ++ p2), Left e)
-    runEval' r s (Free (KvGetOp key k)) =
+    runEval' r s (Free (KvGetOp key k)) = 
       case lookup key s of
         Nothing -> ([], Left "Key not in state")
         Just x -> runEval' r s $ k x
-    runEval' r s (Free (KvPutOp key val k)) =
-      
+    runEval' r s (Free (KvPutOp key val m)) = 
+      let s' = ((key, val) : (filter ((key /=).fst) s)) 
+        in runEval' r s' m

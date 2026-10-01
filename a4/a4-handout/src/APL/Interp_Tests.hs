@@ -60,6 +60,18 @@ pureTests =
       testCase "Error strings concatenate" $
         runEval (catch (evalPrint "a" >> failure "x") (evalPrint "b" >> pure (ValInt 1)))
         @?= (["a", "b"], Right (ValInt 1)),
+      --
+      testCase "KvPut then KvGet" $
+        runEval
+          ( do
+              evalKvPut (ValInt 0) (ValInt 1)
+              evalKvGet (ValInt 0)
+          )
+          @?= ([], Right (ValInt 1)),
+      --
+      testCase "KvGet missing key" $
+        runEval (evalKvGet (ValInt 0))
+          @?= ([], Left "Key not in state")
     ]
 
 ioTests :: TestTree
@@ -85,5 +97,16 @@ ioTests =
            (out, res) @?= (["This is 1: 1", "This is also 1: 1"], Right $ ValInt 1),
         testCase "Double error" $ do
           res <- runEvalIO (eval (TryCatch ((CstInt 0) `Eql` (CstBool False)) ((CstInt 1) `Div` (CstInt 0))))
-          res @?= Left "Division by zero"
+          res @?= Left "Division by zero",
+        --
+        testCase "KvPut then KvGet" $ do
+          res <-
+            runEvalIO $ do
+              evalKvPut (ValInt 0) (ValInt 1)
+              evalKvGet (ValInt 0)
+          res @?= Right (ValInt 1),
+        --
+        testCase "KvGet missing key" $ do
+          res <- runEvalIO $ evalKvGet (ValInt 0)
+          res @?= Left "Key not in database"
     ]

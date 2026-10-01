@@ -77,6 +77,8 @@ data EvalOp a
   | KvGetOp Val (Val -> a)
   | KvPutOp Val Val a
   | TransactionOp (EvalM Val) (Val -> a)
+  | BreakOp Val
+  | LoopOp (EvalM Val) (Val -> a)
 
 instance Functor EvalOp where
   fmap f (ReadOp k) = ReadOp $ f . k
@@ -86,6 +88,8 @@ instance Functor EvalOp where
   fmap f (KvGetOp key k) = KvGetOp key $ f . k
   fmap f (KvPutOp key val m) = KvPutOp key val $ f m
   fmap f (TransactionOp m k) = TransactionOp m $ f . k
+  fmap _ (BreakOp v) = BreakOp v 
+  fmap f (LoopOp m k) = LoopOp m $ f . k
 
 type EvalM a = Free EvalOp a
 
@@ -106,6 +110,7 @@ localEnv f = modifyEffects g
     g (ReadOp k) = ReadOp $ k . f
     g (TryCatchOp m1 m2 k) = TryCatchOp (localEnv f m1) (localEnv f m2) k
     g (TransactionOp m k) = TransactionOp (localEnv f m) k
+    g (LoopOp m k) = LoopOp (localEnv f m) k
     -- TODO: add cases as necessary for the effects you add for looping.
     g op = op
 
@@ -130,8 +135,8 @@ transaction m = Free $ TransactionOp m $ \val -> pure val
 -- | Enclose a computation @m@ such that if a 'breakLoop' is executed in @m@,
 -- execution will return here.
 looping :: EvalM Val -> EvalM Val
-looping = error "TODO"
+looping m = Free $ LoopOp m $ \val -> pure val
 
 -- | Return the provided value from the most immediately enclosing 'looping'.
 breakLoop :: Val -> EvalM a
-breakLoop = error "TODO"
+breakLoop = Free . BreakOp

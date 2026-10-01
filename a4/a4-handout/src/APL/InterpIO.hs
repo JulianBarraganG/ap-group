@@ -54,6 +54,7 @@ withTempDB m = do
   removeFile tempDB -- Delete the temp database file.
   pure res -- Return the result of the computation.
 
+
 runEvalIO :: EvalM a -> IO (Either Error a)
 runEvalIO evalm = do
   clearDB
@@ -106,3 +107,5 @@ runEvalIO evalm = do
       case res of
         Left e -> pure $ Left e
         Right x -> runEvalIO' r db $ k x
+    runEvalIO' r db (Free (BreakOp v)) = undefined
+    runEvalIO' r db (Free (LoopOp v k)) = undefined

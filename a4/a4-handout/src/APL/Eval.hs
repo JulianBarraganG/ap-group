@@ -73,7 +73,7 @@ eval (ForLoop (loopparam, initial) (iv, bound) body) = do
   where
     loop i bound_int acc
       | i >= bound_int = pure acc
-      | otherwise = do
+      | otherwise = looping $ do
           acc' <-
             localEnv (envExtend iv (ValInt i) . envExtend loopparam acc) $
               eval body
@@ -114,3 +114,7 @@ eval (KvGet e1) = do
   evalKvGet k
 
 eval (Transaction e1) = transaction $ eval e1
+
+eval (Break e) = do
+  val <- eval e
+  breakLoop val

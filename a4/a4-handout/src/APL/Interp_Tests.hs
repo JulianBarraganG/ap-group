@@ -16,7 +16,88 @@ evalIO' :: Exp -> IO (Either Error Val)
 evalIO' = runEvalIO . eval
 
 tests :: TestTree
-tests = testGroup "Free monad interpreters" [pureTests, ioTests, transactionTests]
+tests = testGroup "Free monad interpreters" [pureTests, transactionTests, breakTestsPure] -- ioTests
+
+breakTestsPure :: TestTree
+breakTestsPure =
+  testGroup
+    "Break Pure"
+      [ testCase "Pure: break returns from loop" $
+          eval'
+            ( ForLoop ("p", CstInt 0) ("i", CstInt 100) $
+                Let "_" (Break (CstBool True)) (Var "i")
+            )
+            @?= ([], Right (ValBool True)),
+        --
+        testCase "Pure: break outside loop" $
+          eval' (Break (CstBool True))
+            @?= ([], Left "Break outside loop"),
+        --
+        testCase "Pure: loop without break" $
+          eval' (ForLoop ("p", CstInt 0) ("i", CstInt 3) (Add (Var "p") (Var "i")))
+            @?= ([], Right (ValInt 3)),
+        --
+        -- p is 0, then 1; breaks at i = 2 with p = 1.
+        testCase "Pure: break stops loop early" $
+          eval'
+            ( ForLoop ("p", CstInt 0) ("i", CstInt 10) $
+                If (Eql (Var "i") (CstInt 2)) (Break (Var "p")) (Add (Var "p") (Var "i"))
+            )
+            @?= ([], Right (ValInt 1)),
+        --
+        -- Each inner loop breaks with 1; the outer loop runs all 3 iterations.
+        testCase "Pure: break only exits innermost loop" $
+          eval'
+            ( ForLoop ("p", CstInt 0) ("i", CstInt 3) $
+                Add (Var "p") (ForLoop ("q", CstInt 0) ("j", CstInt 10) (Break (CstInt 1)))
+            )
+            @?= ([], Right (ValInt 3)),
+        --
+        testCase "Pure: break is not caught by TryCatch" $
+          eval'
+            ( ForLoop ("p", CstInt 0) ("i", CstInt 10) $
+                TryCatch (Break (CstInt 7)) (CstInt 0)
+            )
+            @?= ([], Right (ValInt 7)),
+        --
+        -- The break leaves the transaction early, so its put of 2 is rolled back.
+        testCase "Pure: break out of transaction rolls back" $
+          eval'
+            ( Let "_" (KvPut (CstInt 0) (CstInt 1)) $
+                Let
+                  "_"
+                  ( ForLoop ("p", CstInt 0) ("i", CstInt 10) $
+                      Transaction (Let "_" (KvPut (CstInt 0) (CstInt 2)) (Break (CstInt 0)))
+                  )
+                  get0
+            )
+            @?= ([], Right (ValInt 1))
+        --
+      ]
+breakTestsIO :: TestTree
+breakTestsIO =
+  testGroup
+    "Break IO"
+      [ testCase "IO: break returns from loop" $ do
+        res <-
+          evalIO'
+            ( ForLoop ("p", CstInt 0) ("i", CstInt 100) $
+                Let "_" (Break (CstBool True)) (Var "i")
+            )
+        res @?= Right (ValBool True),
+      --
+      testCase "IO: break outside loop" $ do
+        res <- evalIO' (Break (CstBool True))
+        res @?= Left "Break outside loop",
+      --
+      testCase "IO: break is not caught by TryCatch" $ do
+        res <-
+          evalIO'
+            ( ForLoop ("p", CstInt 0) ("i", CstInt 10) $
+                TryCatch (Break (CstInt 7)) (CstInt 0)
+            )
+        res @?= Right (ValInt 7)
+      ]
 
 -- Examples from the Task 3 assignment text.
 goodPut, badPut, get0 :: Exp

@@ -106,10 +106,6 @@ ioTests =
               evalKvGet (ValInt 0)
           res @?= Right (ValInt 1),
         --
-        testCase "KvGet missing key" $ do
-          res <- runEvalIO $ evalKvGet (ValInt 0)
-          res @?= Left "Key not in database",
-
         testCase "Missing key test" $ do
           (_, res) <-
             captureIO [" ValInt 1"] $ 

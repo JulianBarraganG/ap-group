@@ -12,3 +12,9 @@ runEval = runEval' envEmpty stateInitial
       let (ps, res) = runEval' r s m
        in (p : ps, res)
     runEval' _ _ (Free (ErrorOp e)) = ([], Left e)
+    runEval' r s (Free (TryCatchOp m1 m2 k)) =
+      case runEval' r s m1 of
+        (p1', Right x) -> let (ps, res) = runEval' r s $ k x in (p1' ++ ps, res)
+        (p1, Left _) -> case runEval' r s m2 of
+          (p2', Right x) -> let (ps, res) = runEval' r s $ k x in (p1 ++ p2' ++ ps, res)
+          (p2, Left e) ->  ((p1 ++ p2), Left e)

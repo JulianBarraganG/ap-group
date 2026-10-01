@@ -56,7 +56,10 @@ pureTests =
       --
       testCase "Div0" $
         eval' (Div (CstInt 7) (CstInt 0))
-          @?= ([], Left "Division by zero")
+          @?= ([], Left "Division by zero"),
+      testCase "Error strings concatenate" $
+        runEval (catch (evalPrint "a" >> failure "x") (evalPrint "b" >> pure (ValInt 1)))
+        @?= (["a", "b"], Right (ValInt 1)),
     ]
 
 ioTests :: TestTree
@@ -71,16 +74,16 @@ ioTests =
             runEvalIO $ do
               evalPrint s1
               evalPrint s2
-        (out, res) @?= ([s1, s2], Right ())
-        -- NOTE: This test will give a runtime error unless you replace the
-        -- version of `eval` in `APL.Eval` with a complete version that supports
-        -- `Print`-expressions. Uncomment at your own risk.
-        -- testCase "print 2" $ do
-        --    (out, res) <-
-        --      captureIO [] $
-        --        evalIO' $
-        --          Print "This is also 1" $
-        --            Print "This is 1" $
-        --              CstInt 1
-        --    (out, res) @?= (["This is 1: 1", "This is also 1: 1"], Right $ ValInt 1)
+        (out, res) @?= ([s1, s2], Right ()),
+        testCase "print 2" $ do
+           (out, res) <-
+             captureIO [] $
+               evalIO' $
+                 Print "This is also 1" $
+                   Print "This is 1" $
+                     CstInt 1
+           (out, res) @?= (["This is 1: 1", "This is also 1: 1"], Right $ ValInt 1),
+        testCase "Double error" $ do
+          res <- runEvalIO (eval (TryCatch ((CstInt 0) `Eql` (CstBool False)) ((CstInt 1) `Div` (CstInt 0))))
+          res @?= Left "Division by zero"
     ]

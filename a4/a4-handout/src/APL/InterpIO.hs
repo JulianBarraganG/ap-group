@@ -66,3 +66,12 @@ runEvalIO evalm = do
       putStrLn p
       runEvalIO' r db m
     runEvalIO' _ _ (Free (ErrorOp e)) = pure $ Left e
+    runEvalIO' r db (Free (TryCatchOp m1 m2 k)) = do
+      val1 <- runEvalIO' r db m1
+      case val1 of
+        Right x -> runEvalIO' r db $ k x
+        Left _ -> do
+          val2 <- runEvalIO' r db m2
+          case val2 of
+            Right y -> runEvalIO' r db $ k y
+            Left e -> pure $ Left e

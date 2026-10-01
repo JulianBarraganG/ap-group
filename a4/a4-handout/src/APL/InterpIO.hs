@@ -75,3 +75,24 @@ runEvalIO evalm = do
           case val2 of
             Right y -> runEvalIO' r db $ k y
             Left e -> pure $ Left e
+    runEvalIO' r db (Free (KvGetOp key k)) = do
+      readState <- readDB db
+      case readState of
+        Left e -> pure $ Left e
+        Right state ->
+          case lookup key state of
+            Nothing -> do
+              newVal <- prompt $ "Invalid key: " ++ (show key) ++ " Enter a replacement: "
+              case readVal newVal of
+                Nothing -> pure $ Left $ "Invalid value input: " ++ newVal
+                Just x -> runEvalIO' r db $ k x
+            Just x -> runEvalIO' r db $ k x
+    runEvalIO' r db (Free (KvPutOp key val m)) = do
+      readState <- readDB db
+      case readState of
+        Left e -> pure $ Left e
+        Right oldState -> do
+            clearDB
+            let newState = (key, val) : (filter ((key /=).fst) oldState)
+              in writeDB db newState
+            runEvalIO' r db m

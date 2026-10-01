@@ -112,3 +112,5 @@ eval (KvPut e1 e2) = do
 eval (KvGet e1) = do
   k <- eval e1
   evalKvGet k
+
+eval (Transaction e1) = transaction $ eval e1

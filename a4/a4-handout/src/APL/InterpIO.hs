@@ -92,7 +92,17 @@ runEvalIO evalm = do
       case readState of
         Left e -> pure $ Left e
         Right oldState -> do
-            clearDB
             let newState = (key, val) : (filter ((key /=).fst) oldState)
               in writeDB db newState
             runEvalIO' r db m
+    runEvalIO' r db (Free (TransactionOp m k)) = do
+      res <- withTempDB $ \tempDB -> do
+        copyDB db tempDB
+        res' <- runEvalIO' r tempDB m -- Every write in this recursive call is made to tempDB
+        case res' of
+          Right _ -> copyDB tempDB db -- Success: commit by copying the temp DB back to db
+          Left _ -> pure () -- Failure: skip commit i.e. db is unchanged
+        pure res'
+      case res of
+        Left e -> pure $ Left e
+        Right x -> runEvalIO' r db $ k x

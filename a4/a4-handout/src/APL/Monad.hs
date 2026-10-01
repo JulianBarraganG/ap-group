@@ -73,11 +73,17 @@ data EvalOp a
   = ReadOp (Env -> a)
   | PrintOp String a
   | ErrorOp Error
+  | TryCatchOp (EvalM Val) (EvalM Val) (Val -> a)
+  | KvGetOp Val (Val -> a)
+  | KvPutOp Val Val a
 
 instance Functor EvalOp where
   fmap f (ReadOp k) = ReadOp $ f . k
   fmap f (PrintOp p m) = PrintOp p $ f m
   fmap _ (ErrorOp e) = ErrorOp e
+  fmap f (TryCatchOp m1 m2 k) = TryCatchOp m1 m2 $ f . k
+  fmap f (KvGetOp v k) = KvGetOp v $ f . k
+  fmap f (KvPutOp v1 v2 m) = KvPutOp v1 v2 $ f m
 
 type EvalM a = Free EvalOp a
 
@@ -96,7 +102,8 @@ localEnv :: (Env -> Env) -> EvalM a -> EvalM a
 localEnv f = modifyEffects g
   where
     g (ReadOp k) = ReadOp $ k . f
-    -- TODO: add cases for TryCatchOp, TransactionOp, and as necessary for the
+    g (TryCatchOp m1 m2 k) = TryCatchOp (localEnv f m1) (localEnv f m2) k
+    -- TODO: add cases for TransactionOp, and as necessary for the
     -- effects you add for looping.
     g op = op
 
@@ -107,13 +114,13 @@ failure :: String -> EvalM a
 failure = Free . ErrorOp
 
 catch :: EvalM Val -> EvalM Val -> EvalM Val
-catch = error "TODO"
+catch m1 m2 = Free $ TryCatchOp m1 m2 $ \val -> pure val
 
 evalKvGet :: Val -> EvalM Val
-evalKvGet = error "TODO"
+evalKvGet v = Free $ KvGetOp v $ \val -> pure val
 
 evalKvPut :: Val -> Val -> EvalM ()
-evalKvPut = error "TODO"
+evalKvPut k v = Free $ KvPutOp k v $ pure () 
 
 transaction :: EvalM Val -> EvalM Val
 transaction = error "TODO"

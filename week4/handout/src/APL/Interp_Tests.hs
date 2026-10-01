@@ -9,7 +9,7 @@ import APL.Util (captureIO)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
-eval' :: Exp -> Val
+eval' :: Exp -> ([String], Either Error Val)
 eval' = runEval . eval
 
 evalIO' :: Exp -> IO (Either Error Val)
@@ -22,7 +22,19 @@ pureTests :: TestTree
 pureTests =
   testGroup
     "Pure interpreter"
-    []
+    [
+      testCase "Let" $
+        eval' (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
+        @?= ([], Right $ ValInt 5),
+      testCase "localEnv" $
+        runEval
+          ( localEnv (const [("x", ValInt 1)]) $
+                   askEnv
+        )
+          @?= ([], Right [("x", ValInt 1)]),
+      testCase "Error" $
+        eval' (Div (CstInt 1) (CstInt 0)) @?= ([], Left "Division by zero")
+    ]
 
 ioTests :: TestTree
 ioTests =

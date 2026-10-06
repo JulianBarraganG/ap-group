@@ -1,5 +1,6 @@
 module APL.Tests where
 
+import APL.Eval (runEval, eval)
 import APL.AST (Exp (..), VName)
 import Test.QuickCheck (
   Gen,
@@ -7,7 +8,8 @@ import Test.QuickCheck (
   elements,
   suchThat,
   oneof,
-  Arbitrary (arbitrary),
+  sized,
+  Arbitrary (arbitrary, shrink),
   sample,
   )
 
@@ -41,10 +43,10 @@ genVName = genName `suchThat` (`notElem` keywords)
       pure (c : cs)
 
 genInt :: Gen Exp
-genInt = CstInt <$> arbitrary 
+genInt = CstInt <$> (arbitrary :: Gen Integer)
 
 genBool :: Gen Exp
-genBool = CstBool <$> arbitrary
+genBool = CstBool <$> (arbitrary :: Gen Bool)
 
 genAdd :: Int -> Gen Exp
 genAdd n = Add <$> genExp n <*> genExp n
@@ -104,9 +106,38 @@ genExp size =
           genTryCatch half,
           genIf ((size - 1) `div` 3)
         ]
+instance Arbitrary Exp where
+  arbitrary = sized genExp
+
+  shrink (Var name) = [Var name' | name' <- shrink name, not (null name')]
+  shrink (CstInt i) = [CstInt i'| i' <- shrink i]
+  shrink (CstBool b) = [CstBool b' | b' <- shrink b]
+  shrink (Add e1 e2) = [e1] ++ [e2] ++ [Add e1' e2 | e1' <- shrink e1] ++ [Add e1 e2' | e2' <- shrink e2]
+  shrink (Sub e1 e2) = [e1] ++ [e2] ++ [Sub e1' e2 | e1' <- shrink e1] ++ [Sub e1 e2' | e2' <- shrink e2]
+  shrink (Mul e1 e2) = [e1] ++ [e2] ++ [Mul e1' e2 | e1' <- shrink e1] ++ [Mul e1 e2' | e2' <- shrink e2]
+  shrink (Div e1 e2) = [e1] ++ [e2] ++ [Div e1' e2 | e1' <- shrink e1] ++ [Div e1 e2' | e2' <- shrink e2]
+  shrink (Pow e1 e2) = [e1] ++ [e2] ++ [Pow e1' e2 | e1' <- shrink e1] ++ [Pow e1 e2' | e2' <- shrink e2]
+  shrink (Eql e1 e2) = [e1] ++ [e2] ++ [Eql e1' e2 | e1' <- shrink e1] ++ [Eql e1 e2' | e2' <- shrink e2]
+  shrink (If cond e1 e2) = [e1] ++ [e2] ++ 
+    [If cond' e1 e2 | cond' <- shrink cond] ++ 
+    [If cond e1' e2 | e1' <- shrink e1] ++ 
+    [If cond e1 e2' | e2' <- shrink e2]
+  shrink (Let name e1 e2) = [e1] ++  [Let name e1' e2 | e1' <- shrink e1] ++ [Let name e1 e2' | e2' <- shrink e2]
+  shrink (Lambda name e1) =  [Lambda name e1' | e1' <- shrink e1]
+  shrink (Apply e1 e2) = [e1] ++ [e2] ++ [Apply e1' e2 | e1' <- shrink e1] ++ [Apply e1 e2' | e2' <- shrink e2]
+  shrink (TryCatch e1 e2) = [e1] ++ [e2] ++ [TryCatch e1' e2 | e1' <- shrink e1] ++ [TryCatch e1 e2' | e2' <- shrink e2]
+  
+
+
+  
+
+
 
 prop_integerAddAssoc :: Integer -> Integer -> Integer -> Bool
-prop_integerAddAssoc = undefined
+prop_integerAddAssoc n1 n2 n3 = (n1 + n2) + n3 == n1 + (n2 + n3) 
 
 prop_aplAddAssoc :: Exp -> Exp -> Exp -> Bool
-prop_aplAddAssoc = undefined
+prop_aplAddAssoc e1 e2 e3 =  runEval (eval (Add (Add e1 e2) e3)) 
+  == runEval (eval (Add e1 (Add e2 e3)))
+
+

@@ -54,44 +54,55 @@ withTempDB m = do
   removeFile tempDB -- Delete the temp database file.
   pure res -- Return the result of the computation.
 
+data Outcome a
+  = Done a
+  | Failed Error
+  | Broke Val
 
 runEvalIO :: EvalM a -> IO (Either Error a)
 runEvalIO evalm = do
   clearDB
-  runEvalIO' envEmpty dbFile evalm
+  res <- runEvalIO' envEmpty dbFile evalm
+  case res of
+    Done x -> pure $ Right x
+    Broke _ -> pure $ Left "Break outside loop"
+    Failed e -> pure $ Left e
+ 
   where
-    runEvalIO' :: Env -> FilePath -> EvalM a -> IO (Either Error a)
-    runEvalIO' _ _ (Pure x) = pure $ pure x
+    runEvalIO' :: Env -> FilePath -> EvalM a -> IO (Outcome a)
+    runEvalIO' _ _ (Pure x) = pure $ Done x
     runEvalIO' r db (Free (ReadOp k)) = runEvalIO' r db $ k r
     runEvalIO' r db (Free (PrintOp p m)) = do
       putStrLn p
       runEvalIO' r db m
-    runEvalIO' _ _ (Free (ErrorOp e)) = pure $ Left e
+    runEvalIO' _ _ (Free (ErrorOp e)) = pure $ Failed e
     runEvalIO' r db (Free (TryCatchOp m1 m2 k)) = do
       val1 <- runEvalIO' r db m1
       case val1 of
-        Right x -> runEvalIO' r db $ k x
-        Left _ -> do
+        Done x -> runEvalIO' r db $ k x
+        Broke vc -> pure $ Broke vc
+        Failed _ -> do
           val2 <- runEvalIO' r db m2
           case val2 of
-            Right y -> runEvalIO' r db $ k y
-            Left e -> pure $ Left e
+            Done y -> runEvalIO' r db $ k y
+            Broke vy -> pure $ Broke vy
+            Failed e -> pure $ Failed e
     runEvalIO' r db (Free (KvGetOp key k)) = do
       readState <- readDB db
       case readState of
-        Left e -> pure $ Left e
+        Left e -> pure $ Failed e
         Right state ->
           case lookup key state of
             Nothing -> do
               newVal <- prompt $ "Invalid key: " ++ (show key) ++ " Enter a replacement: "
               case readVal newVal of
-                Nothing -> pure $ Left $ "Invalid value input: " ++ newVal
+                Nothing -> pure $ Failed $ "Invalid value input: " ++ newVal
                 Just x -> runEvalIO' r db $ k x
             Just x -> runEvalIO' r db $ k x
     runEvalIO' r db (Free (KvPutOp key val m)) = do
       readState <- readDB db
       case readState of
-        Left e -> pure $ Left e
+        Left e -> pure $ Failed e
         Right oldState -> do
             let newState = (key, val) : (filter ((key /=).fst) oldState)
               in writeDB db newState
@@ -101,11 +112,18 @@ runEvalIO evalm = do
         copyDB db tempDB
         res' <- runEvalIO' r tempDB m -- Every write in this recursive call is made to tempDB
         case res' of
-          Right _ -> copyDB tempDB db -- Success: commit by copying the temp DB back to db
-          Left _ -> pure () -- Failure: skip commit i.e. db is unchanged
+          Done _ -> copyDB tempDB db -- Success: commit by copying the temp DB back to db
+          Broke _ -> copyDB tempDB db -- Broke is a success case
+          Failed _ -> pure () -- Failure: skip commit i.e. db is unchanged
         pure res'
       case res of
-        Left e -> pure $ Left e
-        Right x -> runEvalIO' r db $ k x
-    runEvalIO' r db (Free (BreakOp v)) = undefined
-    runEvalIO' r db (Free (LoopOp v k)) = undefined
+        Failed e -> pure $ Failed e
+        Broke v -> pure $ Broke v
+        Done x -> runEvalIO' r db $ k x
+    runEvalIO' _ _ (Free (BreakOp v)) = pure $ Broke v
+    runEvalIO' r db (Free (LoopOp m k)) = do 
+      res <- runEvalIO' r db m
+      case res of
+        Done x -> runEvalIO' r db $ k x
+        Broke v -> runEvalIO' r db $ k v
+        Failed e -> pure $ Failed e

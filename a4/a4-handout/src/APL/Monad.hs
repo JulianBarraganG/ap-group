@@ -102,7 +102,10 @@ modifyEffects ::
   Free e a ->
   Free h a
 modifyEffects _ (Pure x) = Pure x
-modifyEffects g (Free e) = Free $ modifyEffects g <$> g e
+modifyEffects g (Free e) = Free $ (modifyEffects g) <$> (g e)
+
+-- Free (e (Free e a))
+-- modifyEffects ReadOp (k . f) (Free e) = Free $ modifyEffects (ReadOp (k . f)) <$> ((ReadOp (k . f) e)
 
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
 localEnv f = modifyEffects g
@@ -111,7 +114,6 @@ localEnv f = modifyEffects g
     g (TryCatchOp m1 m2 k) = TryCatchOp (localEnv f m1) (localEnv f m2) k
     g (TransactionOp m k) = TransactionOp (localEnv f m) k
     g (LoopOp m k) = LoopOp (localEnv f m) k
-    -- TODO: add cases as necessary for the effects you add for looping.
     g op = op
 
 evalPrint :: String -> EvalM ()

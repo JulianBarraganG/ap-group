@@ -25,14 +25,14 @@ runEval evalm =
     runEval' r s (Free (TryCatchOp m1 m2 k)) =
       case runEval' r s m1 of
         (p1', Done x s1) -> let (ps, res) = runEval' r s1 $ k x in (p1' ++ ps, res)
+        (pb, Broke v' sb') -> (pb, Broke v' sb')-- let (ps, res) = runEval' r sb' $ k v' in (pb ++ ps, res)
         (p1, Failed _) -> case runEval' r s m2 of
           (p2', Done x s2) -> let (ps, res) = runEval' r s2 $ k x in (p1 ++ p2' ++ ps, res)
-          (pb, Broke v sb) -> let (ps, res) = runEval' r sb $ k v in (p1 ++ pb ++ ps, res)
+          (pb, Broke v sb) -> (p1 ++ pb, Broke v sb)
           (p2, Failed e) ->  ((p1 ++ p2), Failed e)
-        (pb, Broke v' sb') -> let (ps, res) = runEval' r sb' $ k v' in (pb ++ ps, res)
     runEval' r s (Free (KvGetOp key k)) =
       case lookup key s of
-        Nothing -> ([], Failed "Key not in state")
+        Nothing -> ([], Failed ("Invalid key: " ++ (show key)))
         Just x -> runEval' r s $ k x
     runEval' r s (Free (KvPutOp key val m)) =
       let s' = ((key, val) : (filter ((key /=).fst) s))
@@ -40,7 +40,7 @@ runEval evalm =
     runEval' r s (Free (TransactionOp m k)) =
       case runEval' r s m of
         (p1, Done x s') -> let (ps, res) = runEval' r s' $ k x in (p1 ++ ps, res)
-        (pb, Broke v _) -> let (ps, res) = runEval' r s $ k v in (pb ++ ps, res)
+        (pb, Broke v s') -> (pb, Broke v s')
         (p1, Failed e) -> (p1, Failed e)
     runEval' _ s (Free (BreakOp v)) = ([], Broke v s)
     runEval' r s (Free (LoopOp m k)) =

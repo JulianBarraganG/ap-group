@@ -10,6 +10,7 @@ import Test.QuickCheck (
   oneof,
   sized,
   Arbitrary (arbitrary, shrink),
+  quickCheck,
   sample,
   )
 
@@ -126,18 +127,11 @@ instance Arbitrary Exp where
   shrink (Lambda name e1) =  [Lambda name e1' | e1' <- shrink e1]
   shrink (Apply e1 e2) = [e1] ++ [e2] ++ [Apply e1' e2 | e1' <- shrink e1] ++ [Apply e1 e2' | e2' <- shrink e2]
   shrink (TryCatch e1 e2) = [e1] ++ [e2] ++ [TryCatch e1' e2 | e1' <- shrink e1] ++ [TryCatch e1 e2' | e2' <- shrink e2]
-  
-
-
-  
-
 
 
 prop_integerAddAssoc :: Integer -> Integer -> Integer -> Bool
 prop_integerAddAssoc n1 n2 n3 = (n1 + n2) + n3 == n1 + (n2 + n3) 
 
 prop_aplAddAssoc :: Exp -> Exp -> Exp -> Bool
-prop_aplAddAssoc e1 e2 e3 =  runEval (eval (Add (Add e1 e2) e3)) 
-  == runEval (eval (Add e1 (Add e2 e3)))
-
-
+prop_aplAddAssoc e1 e2 e3 =  
+  runEval (eval (Add (Add e1 e2) e3)) == runEval (eval (Add e1 (Add e2 e3)))

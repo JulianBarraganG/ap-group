@@ -3,9 +3,9 @@ module APL.Tests
   )
 where
 
-import APL.AST (Exp (..), subExp)
+import APL.AST (Exp (..), subExp, VName, printExp)
 import APL.Error (isVariableError, isDomainError, isTypeError)
-import APL.Check (checkExp)
+import APL.Check (checkExp, Vars)
 import Test.QuickCheck
   ( Property
   , Gen
@@ -13,13 +13,54 @@ import Test.QuickCheck
   , property
   , cover
   , checkCoverage
-  , oneof
   , sized
   , withMaxSuccess
+  , frequency
+  , elements
+  , suchThat
+  , choose
+  , vectorOf
+  , tabulate
+  , oneof
+  , sample
+  , quickCheck
   )
+import Text.Megaparsec (runParser)
+import APL.Parser (parseAPL)
+
+keywords :: [String]
+keywords = [
+            "try", 
+            "catch",
+            "if",
+            "else",
+            "then",
+            "let", 
+            "do",
+            "print",
+            "put",
+            "get",
+            "for",
+            "in",
+            "loop"
+            ]
+
+alphaChars :: String
+alphaChars = ['a'..'z'] ++ ['A'..'Z']
+alphaNumChars :: String
+alphaNumChars = alphaChars ++ ['0'..'9']
+
+genVName :: Gen VName
+genVName = genName `suchThat` (`notElem` keywords)
+  where 
+    genName = do
+      c <- elements alphaChars
+      n <- choose (1, 3)
+      cs <- vectorOf n (elements alphaNumChars)
+      pure (c : cs)
 
 instance Arbitrary Exp where
-  arbitrary = sized genExp
+  arbitrary = sized $ genExp []
 
   shrink (Add e1 e2) =
     e1 : e2 : [Add e1' e2 | e1' <- shrink e1] ++ [Add e1 e2' | e2' <- shrink e2]
@@ -45,28 +86,45 @@ instance Arbitrary Exp where
     e1 : e2 : [TryCatch e1' e2 | e1' <- shrink e1] ++ [TryCatch e1 e2' | e2' <- shrink e2]
   shrink _ = []
 
-genExp :: Int -> Gen Exp
-genExp 0 = oneof [CstInt <$> arbitrary, CstBool <$> arbitrary]
-genExp size =
-  oneof
-    [ CstInt <$> arbitrary
-    , CstBool <$> arbitrary
-    , Add <$> genExp halfSize <*> genExp halfSize
-    , Sub <$> genExp halfSize <*> genExp halfSize
-    , Mul <$> genExp halfSize <*> genExp halfSize
-    , Div <$> genExp halfSize <*> genExp halfSize
-    , Pow <$> genExp halfSize <*> genExp halfSize
-    , Eql <$> genExp halfSize <*> genExp halfSize
-    , If <$> genExp thirdSize <*> genExp thirdSize <*> genExp thirdSize
-    , Var <$> arbitrary
-    , Let <$> arbitrary <*> genExp halfSize <*> genExp halfSize
-    , Lambda <$> arbitrary <*> genExp (size - 1)
-    , Apply <$> genExp halfSize <*> genExp halfSize 
-    , TryCatch <$> genExp halfSize <*> genExp halfSize
+genExp :: Vars -> Int -> Gen Exp
+genExp vars 0 = frequency [
+  (1, CstInt <$> arbitrary),
+  (1, CstBool <$> arbitrary),
+  (2, if vars /= [] 
+      then Var <$> elements vars
+      else Var <$> genVName
+  )]
+
+genExp vars size =
+  frequency
+    [ (1, CstInt <$> arbitrary),
+      (1, CstBool <$> arbitrary),
+      (1, if vars /= [] 
+          then Var <$> elements vars
+          else Var <$> genVName
+      ),
+      (1, Add <$> genExp vars halfSize <*> genExp vars halfSize),
+      (1, Sub <$> genExp vars halfSize <*> genExp vars halfSize),
+      (1, Mul <$> genExp vars halfSize <*> genExp vars halfSize),
+      (1, Div <$> genExp vars halfSize <*> genExp vars halfSize),
+      (1, Pow <$> genExp vars halfSize <*> genExp vars halfSize),
+      (1, Eql <$> genExp vars halfSize <*> genExp vars halfSize),
+      (1, If <$> genExp vars thirdSize <*> genExp vars thirdSize <*> genExp vars thirdSize),
+      (8, do 
+            name <- genVName
+            Let name <$> genExp vars halfSize <*> genExp (name : vars) halfSize
+      ),
+      (8, do
+            name <- genVName
+            Lambda name <$> genExp (name : vars) (size - 1)
+      ),
+      (1, Apply <$> genExp vars halfSize <*> genExp vars halfSize ),
+      (1, TryCatch <$> genExp vars halfSize <*> genExp vars halfSize)
     ]
   where
     halfSize = size `div` 2
     thirdSize = size `div` 3
+
 
 expCoverage :: Exp -> Property
 expCoverage e = checkCoverage
@@ -80,7 +138,10 @@ expCoverage e = checkCoverage
   $ ()
 
 parsePrinted :: Exp -> Bool
-parsePrinted _ = undefined
+parsePrinted e = 
+  case (parseAPL "" (printExp e)) of
+    Right e' -> e' == e
+    Left _ -> False
 
 onlyCheckedErrors :: Exp -> Bool
 onlyCheckedErrors _ = undefined

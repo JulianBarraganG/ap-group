@@ -60,7 +60,7 @@ printExp (Let v e1 e2) =
 printExp (Lambda v body) =
   parens $ "\\" ++ v ++ " -> " ++ printExp body
 printExp (Apply x y) =
-  printExp x ++ " " ++ printExp y
+  parens $ parens (printExp x) ++ " " ++ printExp y
 printExp (TryCatch x y) =
   "try " ++ printExp x ++ " catch " ++ printExp y
 

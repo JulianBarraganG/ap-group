@@ -47,8 +47,12 @@ lVName = lexeme $ try $ do
     else pure v
 
 lInteger :: Parser Integer
-lInteger =
-  lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
+lInteger = lexeme . try $ do
+  neg <- choice [True <$ chunk "-", pure False]
+  n <- read <$> some (satisfy isDigit)
+  notFollowedBy (satisfy isAlphaNum)
+  pure (if neg then negate n else n)
+     
 
 lString :: String -> Parser ()
 lString s = lexeme $ void $ chunk s

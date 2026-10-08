@@ -1,4 +1,4 @@
-module APL.Check (checkExp, Error) where
+module APL.Check (checkExp, Error, Vars) where
 
 import APL.AST (Exp (..), VName)
 import APL.Error (Error (..))

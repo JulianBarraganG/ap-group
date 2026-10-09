@@ -62,7 +62,7 @@ printExp (Lambda v body) =
 printExp (Apply x y) =
   parens $ parens (printExp x) ++ " " ++ printExp y
 printExp (TryCatch x y) =
-  "try " ++ printExp x ++ " catch " ++ printExp y
+  parens $ "try " ++ printExp x ++ " catch " ++ printExp y
 
 subExp :: Exp -> [Exp]
 subExp e = e : case e of

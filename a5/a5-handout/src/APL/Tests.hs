@@ -2,7 +2,7 @@ module APL.Tests
   ( properties
   )
 where
-
+import APL.Eval(eval, runEval)
 import APL.AST (Exp (..), subExp, VName, printExp)
 import APL.Error (isVariableError, isDomainError, isTypeError)
 import APL.Check (checkExp, Vars)
@@ -91,9 +91,7 @@ genExp vars 0 = frequency [
   (4, CstInt <$> arbitrary),
   (1, CstBool <$> arbitrary),
   (if null vars then 0 else 3,
-      if null vars
-      then Var <$> genVName
-      else Var <$> elements vars
+    Var <$> elements vars
   )]
 
 genExp vars size =
@@ -146,7 +144,13 @@ parsePrinted e =
     Left _ -> False
 
 onlyCheckedErrors :: Exp -> Bool
-onlyCheckedErrors _ = undefined
+onlyCheckedErrors e = 
+  let res = runEval(eval e) in
+    let err_list = checkExp e in
+      case res of 
+        Right _ -> True
+        Left err -> err `elem` err_list
+
 
 -- The number of tests is part of the specification of this test suite: some of
 -- these properties fail only rarely.  Do not reduce it.

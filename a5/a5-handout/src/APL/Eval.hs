@@ -126,3 +126,5 @@ eval (Apply e1 e2) = do
       failure NonFunction
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
+
+

@@ -88,20 +88,22 @@ instance Arbitrary Exp where
 
 genExp :: Vars -> Int -> Gen Exp
 genExp vars 0 = frequency [
-  (1, CstInt <$> arbitrary),
+  (4, CstInt <$> arbitrary),
   (1, CstBool <$> arbitrary),
-  (2, if vars /= [] 
-      then Var <$> elements vars
-      else Var <$> genVName
+  (if null vars then 0 else 3,
+      if null vars
+      then Var <$> genVName
+      else Var <$> elements vars
   )]
 
 genExp vars size =
   frequency
     [ (1, CstInt <$> arbitrary),
       (1, CstBool <$> arbitrary),
-      (1, if vars /= [] 
-          then Var <$> elements vars
-          else Var <$> genVName
+      (if null vars then 1 else 3,
+      if null vars
+      then Var <$> genVName
+      else Var <$> elements vars
       ),
       (1, Add <$> genExp vars halfSize <*> genExp vars halfSize),
       (1, Sub <$> genExp vars halfSize <*> genExp vars halfSize),
@@ -110,11 +112,11 @@ genExp vars size =
       (1, Pow <$> genExp vars halfSize <*> genExp vars halfSize),
       (1, Eql <$> genExp vars halfSize <*> genExp vars halfSize),
       (1, If <$> genExp vars thirdSize <*> genExp vars thirdSize <*> genExp vars thirdSize),
-      (8, do 
+      (6, do 
             name <- genVName
             Let name <$> genExp vars halfSize <*> genExp (name : vars) halfSize
       ),
-      (8, do
+      (6, do
             name <- genVName
             Lambda name <$> genExp (name : vars) (size - 1)
       ),
